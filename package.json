@@ -1,0 +1,29 @@
+{
+  "name": "elm-video-chat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "elm-make src/index.elm --output public/index.js && elm-make src/room.elm --output public/room.js",
+    "start": "npm run build && node server/index",
+    "watch": "gulp watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.12.3",
+    "express": "^4.12.3",
+    "express-session": "^1.11.1",
+    "sockjs": "^0.3.15",
+    "uuid": "^2.0.1",
+    "ws": "^0.7.1"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-develop-server": "^0.4.2",
+    "gulp-elm": "^0.2.0",
+    "gulp-plumber": "^1.0.0",
+    "gulp-watch": "^4.2.4"
+  }
+}
