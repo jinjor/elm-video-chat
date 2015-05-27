@@ -11,8 +11,13 @@ module.exports = function(socket, storage, session, user) {
       session.users[data.from] = user;
       room.addClient(data.from, socket);
       room.getClients().forEach(function(client) {
+        // client.send(JSON.stringify({
+        //   type: 'update'
+        // }));
         client.send(JSON.stringify({
-          type: 'update'
+          from: data.from,
+          type: 'join',
+          user: session.users[data.from]
         }));
       });
     } else if (data.type === 'message') {
@@ -38,11 +43,12 @@ module.exports = function(socket, storage, session, user) {
   });
   socket.on('close', function() {
     session.getRooms().forEach(function(room) {
-      var removed = room.removeClient(socket);
-      if (removed) {
+      var removedId = room.removeClient(socket);
+      if (removedId) {
         room.getClients().forEach(function(client) {
           client.send(JSON.stringify({
-            type: 'update'
+            from: removedId,
+            type: 'leave'
           }));
         });
       }

@@ -106,9 +106,20 @@ function ceateConnectionManager() {
       return connections[key];
     });
   };
+
+  //----
+  var streams = {};
+  var addStream = function(peerId, mediaType, stream) {
+    streams[peerId + mediaType] = stream;
+  };
+  var getStream = function(peerId, mediaType) {
+    return streams[peerId + mediaType];
+  };
   return {
     getConnection: getConnection,
-    getAllConnections: getAllConnections
+    getAllConnections: getAllConnections,
+    getStream: getStream,
+    addStream: addStream
   };
 }
 
@@ -128,50 +139,21 @@ function getRoomInfo(cb) {
 
 function offerSDP(clientId, cm, send, mediaType) {
   var mediaOptions = {};
-  mediaOptions[mediaType] = true;
-  // mediaOptions.audio = true;
-
-  // roomSignal.ports.addConnection.send([clientId, mediaType]);
-  roomSignal.ports.switchLocalMedia.send([mediaType, true]);
+  if(mediaType === 'mic') {
+    mediaOptions.audio = true;
+  } else if(mediaType === 'video') {
+    mediaOptions.video = true;
+  } else if(mediaType === 'screen') {
+  }
 
   navigator.getUserMedia(mediaOptions, function(stream) {
-
+    cm.addStream(clientId, mediaType, stream);
     getRoomInfo(function(room) {
       var peers = room.peers;
       peers.forEach(function(peerId) {
-        if(peerId === clientId) {
-          return;
-        }
-        console.log(peerId, clientId);
-        var pc = cm.getConnection(peerId);
-        pc.onicecandidate = function(e) {
-          if (e.candidate) {
-            send({
-              type: 'offerCandidate',
-              to: peerId,
-              data: e.candidate
-            });
-          }
-        };
-
-        pc.addStream(stream);
-
-        pc.createOffer(function(offer) {
-          console.log('created offer', offer);
-
-          roomSignal.ports.localVideoUrlList.send([[mediaType, URL.createObjectURL(stream)]]);
-
-          pc.setLocalDescription(
-            new RTCSessionDescription(offer),
-            function() { // send offer to server
-              send({
-                type: 'offerSDP',
-                to: peerId,
-                data: offer
-              });
-            }, onerror);
-        }, onerror);
-
+        sendOfferToPeer(clientId, cm, send, peerId, stream, function(){
+          roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
+        });
       });
     });
 
@@ -179,6 +161,39 @@ function offerSDP(clientId, cm, send, mediaType) {
 
 }
 
+function sendOfferToPeer(clientId, cm, send, peerId, stream, cb) {
+  if(peerId === clientId) {
+    return;
+  }
+
+  var pc = cm.getConnection(peerId);
+  pc.onicecandidate = function(e) {
+    if (e.candidate) {
+      send({
+        type: 'offerCandidate',
+        to: peerId,
+        data: e.candidate
+      });
+    }
+  };
+
+  pc.addStream(stream);
+
+  pc.createOffer(function(offer) {
+    console.log('created offer', offer);
+
+    pc.setLocalDescription(
+      new RTCSessionDescription(offer),
+      function() { // send offer to server
+        send({
+          type: 'offerSDP',
+          to: peerId,
+          data: offer
+        });
+      }, onerror);
+    cb && cb();
+  }, onerror);
+}
 
 
 function answerSDP(clientId, cm, send, e) {
@@ -194,7 +209,7 @@ function answerSDP(clientId, cm, send, e) {
     }
   };
   pc.onaddstream = function(e) {
-    roomSignal.ports.videoUrlList.send([[[_from, "video"], URL.createObjectURL(e.stream)]]);
+    roomSignal.ports.setVideoUrl.send([[_from, "video"], URL.createObjectURL(e.stream)]);
   };
   roomSignal.ports.addConnection.send([_from, "video"]);//TODO mediaType
   pc.setRemoteDescription(
@@ -231,14 +246,18 @@ function addCandidate(clientId, cm, send, e) {
   }
 }
 
-
+function join(clientId, cm, send, e, cb) {
+  ["mic", "video", "screen"].forEach(function(mediaType) {
+    var stream = cm.getStream(clientId, mediaType);
+    if(stream) {
+      sendOfferToPeer(clientId, cm, send, e.from, stream);
+    }
+  });
+  cb();
+}
 
 function onMessage(clientId, cm, send, data) {
-  if (data.type === 'join') {
-    // join(e);
-  } else if (data.type === 'leave') {
-    // leave(e);
-  } else if (data.type === 'offerSDP') {
+  if (data.type === 'offerSDP') {
     answerSDP(clientId, cm, send, data);
   } else if (data.type === 'answerSDP') {
     acceptAnswer(clientId, cm, send, data);
@@ -259,22 +278,38 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   },
   updateRoom: getRoom(),
   addConnection: ["",""],
-  videoUrlList: [],
-  localVideoUrlList: [],
-  switchLocalMedia: ["video", false]
+  setVideoUrl: [["", ""],""],
+  setLocalVideoUrl: ["", ""],
+  join: ["", {
+    name: '',
+    email: ''
+  }],
+  leave: ""
 });
 getRoomInfo(function(room) {
   var cm = ceateConnectionManager();
   var clientId = uuid();
-  var send = setupWebSocket(room, clientId, function(data){
-    var type = data.type;
+
+  room.peers.forEach(function(peerId) {
+    var user = room.users[peerId];
+    roomSignal.ports.join.send([peerId, user]);
+  });
+
+  var send = setupWebSocket(room, clientId, function(e) {
+    var type = e.type;
     console.log(type)
     if (type === 'update') {
       roomSignal.ports.updateRoom.send(getRoom());
     } else if (type === 'message') {
-      roomSignal.ports.receiveChat.send(data.message);
+      roomSignal.ports.receiveChat.send(e.message);
+    } else if (type === 'join') {
+      join(clientId, cm, send, e, function() {
+        roomSignal.ports.join.send([e.from, e.user]);
+      });
+    } else if (type === 'leave') {
+      roomSignal.ports.leave.send(e.from);
     } else {
-      onMessage(clientId, cm, send, data);
+      onMessage(clientId, cm, send, e);
     }
   });
   roomSignal.ports.startStreaming.subscribe(function(mediaType) {

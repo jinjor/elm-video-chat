@@ -14,14 +14,14 @@ Room.prototype.getClient = function(id) {
   return this.clients[id];
 };
 Room.prototype.removeClient = function(socket) {
-  var exists = false;
+  var removedId = null;
   this.getClientIds().forEach(function(id) {
     if(this.clients[id] === socket) {
       delete this.clients[id];
-      exists = true;
+      removedId = id;
     }
   }.bind(this));
-  return exists;
+  return removedId;
 };
 Room.prototype.getClients = function() {
   return this.getClientIds().map(function(id) {
