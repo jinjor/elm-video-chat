@@ -1,3 +1,7 @@
+
+
+
+
 function Room(id) {
   this.id = id;
   this.clients = {};
@@ -57,7 +61,9 @@ var createRoom = function(roomId) {
   rooms[roomId] = new Room(roomId);
 };
 
+
 module.exports = {
+  users: {},
   getRoom: getRoom,
   getRooms: getRooms,
   createRoom: createRoom

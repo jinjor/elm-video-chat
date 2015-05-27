@@ -1,5 +1,5 @@
 
-module.exports = function(socket, storage, session) {
+module.exports = function(socket, storage, session, user) {
 
   socket.on('message', function(s) {
     var data = JSON.parse(s);
@@ -8,6 +8,7 @@ module.exports = function(socket, storage, session) {
       if (!room) {
         throw new Error('Room Not Found: ' + data.room);
       }
+      session.users[data.from] = user;
       room.addClient(data.from, socket);
       room.getClients().forEach(function(client) {
         client.send(JSON.stringify({

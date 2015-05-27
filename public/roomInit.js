@@ -87,7 +87,7 @@ function ceateConnectionManager() {
   var connections = {};
   var getConnection = function(id) {
     if(!id) {
-      throw new Erorr('id is null');
+      throw new Error('id is null');
     }
     if (!connections[id]) {
       console.log('not exists: ' + id);
@@ -129,17 +129,16 @@ function getRoomInfo(cb) {
 function offerSDP(clientId, cm, send, mediaType) {
   var mediaOptions = {};
   mediaOptions[mediaType] = true;
+  // mediaOptions.audio = true;
 
-  roomSignal.ports.addConnection.send([clientId, mediaType]);
-
+  // roomSignal.ports.addConnection.send([clientId, mediaType]);
+  roomSignal.ports.switchLocalMedia.send([mediaType, true]);
 
   navigator.getUserMedia(mediaOptions, function(stream) {
 
     getRoomInfo(function(room) {
       var peers = room.peers;
-      peers.forEach(function(peer) {
-
-        var peerId = peer.id;
+      peers.forEach(function(peerId) {
         if(peerId === clientId) {
           return;
         }
@@ -160,7 +159,7 @@ function offerSDP(clientId, cm, send, mediaType) {
         pc.createOffer(function(offer) {
           console.log('created offer', offer);
 
-          roomSignal.ports.videoUrlList.send([[[clientId, mediaType], URL.createObjectURL(stream)]]);
+          roomSignal.ports.localVideoUrlList.send([[mediaType, URL.createObjectURL(stream)]]);
 
           pc.setLocalDescription(
             new RTCSessionDescription(offer),
@@ -260,7 +259,9 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   },
   updateRoom: getRoom(),
   addConnection: ["",""],
-  videoUrlList: []
+  videoUrlList: [],
+  localVideoUrlList: [],
+  switchLocalMedia: ["video", false]
 });
 getRoomInfo(function(room) {
   var cm = ceateConnectionManager();

@@ -19,15 +19,21 @@ import Lib.Header as Header
 import Debug exposing (log)
 
 -- Models
-type alias Room = { id:String, peers: List Peer}
-type alias Peer = { id:String, name:String, mail:String }
+type alias Room = { id:String, peers: List PeerId, users: Dict PeerId User}
+type alias User = { name:String, email:String }
 type alias Context = { roomName:String
                       , address: Signal.Address Action
-                      , peers: Dict String Peer
+                      , peers: List PeerId
+                      , users: Dict PeerId User
                       , connections: List Connection
                       , chatField: String
                       , chatMessages: List ChatMessage
-                      , videoUrls: Dict Connection String}
+                      , videoUrls: Dict Connection String
+                      , localVideoUrls: Dict String String
+                      , localVideo: Bool
+                      , localAudio: Bool
+                      , localScreen: Bool }
+
 type alias PeerId = String
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
@@ -39,15 +45,15 @@ getRoomInfo roomId = Http.get roomDecoder (log "url" ("/api/room/" ++ roomId))
 
 roomDecoder : Json.Decoder Room
 roomDecoder =
-  let peer =
-        Json.object3 (\id name mail -> { id=id, name=name, mail=mail })
-          ("id" := Json.string)
+  let peer = Json.string
+      user = Json.object2 (\name email -> { name=name, email=email })
           ("name" := Json.string)
-          ("mail" := Json.string)
+          ("email" := Json.string)
   in
-    Json.object2 (\id peers -> { id=id, peers=peers })
+    Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
       ("id" := Json.string)
       ("peers" := Json.list peer)
+      ("users" := Json.dict user)
 
 fetchRoom : String -> Task Http.Error ()
 fetchRoom roomId = (getRoomInfo roomId) `andThen` (\room -> (Signal.send actions.address (InitRoom room))) `onError` (\err -> log "err" (succeed ()))
@@ -67,13 +73,21 @@ port startStreaming : Signal String
 port startStreaming = startStreamingMB.signal
 
 port videoUrlList : Signal (List (Connection, String))
-port updateVideoUrlList : Signal (Task x ())
-port updateVideoUrlList = Signal.map (\list -> (Signal.send actions.address (UpdateVideoUrls (Dict.fromList list)))) videoUrlList
+port videoUrlList' : Signal (Task x ())
+port videoUrlList' = Signal.map (\list -> (Signal.send actions.address (UpdateVideoUrls (Dict.fromList list)))) videoUrlList
+
+
+port localVideoUrlList : Signal (List (String, String))
+port localVideoUrlList' : Signal (Task x ())
+port localVideoUrlList' = Signal.map (\list -> (Signal.send actions.address (UpdateLocalVideoUrls (Dict.fromList list)))) localVideoUrlList
 
 port addConnection : Signal Connection
 port addConnection' : Signal (Task x ())
 port addConnection' = Signal.map (\conn -> (Signal.send actions.address (AddConnection conn))) addConnection
 
+port switchLocalMedia : Signal (String, Bool)
+port switchLocalMedia' : Signal (Task x ())
+port switchLocalMedia' = Signal.map (\a -> (Signal.send actions.address (SwitchLocalMedia (fst a) (snd a)))) switchLocalMedia
 
 -- Statics
 mediaTypes = ["mic", "video", "screen"]
@@ -87,17 +101,22 @@ context : Signal Context
 context =
   let initial = { roomName= "　"
                   , address = actions.address
-                  , peers = Dict.empty
+                  , peers = []
+                  , users = Dict.empty
                   , connections = []
                   , chatMessages = []
                   , chatField = ""
-                  , videoUrls = Dict.empty}
+                  , videoUrls = Dict.empty
+                  , localVideoUrls = Dict.empty
+                  , localVideo = False
+                  , localAudio = False
+                  , localScreen = False}
   in Signal.foldp update initial actions.signal
 
-peerOf : Context -> String -> Peer
-peerOf c peerId = case Dict.get peerId c.peers of
-  Just peer -> peer
-  Nothing -> { id="", name="", mail="" }
+userOf : Context -> PeerId -> User
+userOf c peerId = case Dict.get peerId c.users of
+  Just user -> user
+  Nothing -> { name="", email="" }
 
 -- Actions
 
@@ -110,6 +129,8 @@ type Action
   | UpdateField String
   | AddChatMessage ChatMessage
   | UpdateVideoUrls (Dict Connection String)
+  | UpdateLocalVideoUrls (Dict String String)
+  | SwitchLocalMedia String Bool
 
 update : Action -> Context -> Context
 update action context =
@@ -122,11 +143,12 @@ update action context =
       InitRoom room ->
         { context |
           roomName <- room.id,
-          peers <- Dict.fromList (List.map (\p -> (p.id, p)) room.peers)
+          peers <- room.peers,
+          users <- room.users
         }
       RemovePeer target ->
         { context |
-          peers <- Dict.remove target context.peers
+          peers <- List.filter ((/=) target) context.peers
         }
       AddConnection conn ->
         { context |
@@ -144,6 +166,20 @@ update action context =
         { context |
           videoUrls <- videoUrls
         }
+      UpdateLocalVideoUrls videoUrls ->
+        { context |
+          localVideoUrls <- videoUrls
+        }
+      SwitchLocalMedia mediaType on ->
+        if  | mediaType == "video" -> { context |
+                localVideo <- on
+              }
+            | mediaType == "audio" -> { context |
+                localAudio <- on
+              }
+            | mediaType == "screen" -> { context |
+                localScreen <- on
+              }
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
@@ -168,8 +204,6 @@ is13 code =
   if code == 13 then Ok () else Err "not the right key code"
 
 
-
-
 fullscreenButton : Signal.Address a -> a -> Html
 fullscreenButton address event = div [class "btn pull-right", onClick address event] [
     div [class "glyphicon glyphicon-fullscreen"] []
@@ -183,17 +217,14 @@ windowCloseButton address event = div [class "btn pull-right", onClick address e
 windowHeader : String -> List Html -> Html
 windowHeader title buttons = div [class "panel-heading row"] ((text title) :: buttons)
 
-modal : String -> Signal.Address a -> a -> List Html -> Html
-modal title address event contents =
-  let buttons = [windowCloseButton address event, fullscreenButton address event] --TODO
-  in window (windowHeader title buttons) contents
-
-window : Html -> List Html -> Html
-window header contents =
-  let body = div [class "panel-body row"] contents
-  in div [class "panel panel-default col-md-4"] [header, body]
-
 ----------------
+
+window : Html -> List Html -> Bool -> Html
+window header contents local =
+  let body = div [class "panel-body row"] contents
+      face = if | local -> "panel-primary"
+                | otherwise -> "panel-default"
+  in div [class ("panel col-md-4 " ++ face)] [header, body]
 
 view : Context -> Html
 view c = div [] [
@@ -226,16 +257,18 @@ madiaButton address mediaType =
 madiaButtons : Signal.Address Action -> Html
 madiaButtons address = div [ Html.Attributes.attribute "role" "group", class "btn-group"] (List.map (madiaButton address) mediaTypes)
 
-peerView : Signal.Address Action -> Peer -> Html
-peerView address peer = li [] [
+peerView : Signal.Address Action -> Context -> PeerId -> Html
+peerView address c peer =
+  let user = userOf c peer
+  in li [] [
     div [] [
       i [class "fa fa-user"] [],
-      text peer.name
+      text user.name
     ]
   ]
 
-peerViews : Signal.Address Action -> List Peer -> Html
-peerViews address peers = ul [class "list-unstyled"] (List.map (\peer -> peerView address peer) peers)
+peerViews : Signal.Address Action -> Context -> List PeerId -> Html
+peerViews address c peers = ul [class "list-unstyled"] (List.map (\peer -> peerView address c peer) peers)
 
 upperView : Context -> Html
 upperView c = div [class "col-md-12"] [statusView c, mainView c]
@@ -244,25 +277,47 @@ statusView : Context -> Html
 statusView c = div [class "col-md-3"] [
     roomTitle c,
     madiaButtons c.address,
-    peerViews c.address (Dict.values c.peers)
+    peerViews c.address c c.peers
   ]
 
 mainView : Context -> Html
 mainView c = div [class "col-md-9"] [div [class "row"] (mediaViews c)]
 
 mediaViews : Context -> List Html
-mediaViews c = List.map (\connection -> mediaWindowView c.address c connection) c.connections
+mediaViews c =
+  let localList = List.map (\mediaType -> localMediaWindowView c.address c mediaType) ["video", "screen"]
+      remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) c.connections
+      both = List.concat [localList, remoteList]
+      filterd = List.filter (\maybe -> case maybe of
+          Just a -> True
+          Nothing -> False
+        ) both
+  in List.map (\(Just a) -> a) filterd
 
-mediaWindowView : Signal.Address Action -> Context -> Connection -> Html
-mediaWindowView address c connection =
+localMediaWindowView : Signal.Address Action -> Context -> String -> Maybe Html
+localMediaWindowView address c mediaType =
+  let title = "Local " ++ mediaType
+      maybeVideoUrl = Dict.get mediaType c.localVideoUrls
+  in Maybe.map (\videoUrl -> mediaWindowView c.address NoOp c title videoUrl True) maybeVideoUrl
+
+remoteMediaWindowView : Signal.Address Action -> Context -> Connection -> Maybe Html
+remoteMediaWindowView address c connection =
   let (peerId, mediaType) = connection
-      peer = peerOf c peerId
-      title = String.concat [peer.name, "'s ", mediaType, " view."]
-      videoMaybe = Maybe.map (\url -> video [src url, Html.Attributes.attribute "autoplay" ""] []) (Dict.get connection c.videoUrls)
-      videoHtml = case videoMaybe of
-        Just html -> [html]
-        Nothing -> []
-  in modal title address (CloseWindow connection) videoHtml
+      user = userOf c peerId
+      title = String.concat [user.name, "'s ", mediaType, " view."]
+      maybeVideoUrl = Dict.get connection c.videoUrls
+  in Maybe.map (\videoUrl -> mediaWindowView address (CloseWindow connection) c title videoUrl False) maybeVideoUrl
+
+mediaWindowView : Signal.Address Action -> Action -> Context -> String -> String -> Bool -> Html
+mediaWindowView address action c title videoUrl local =
+  let videoHtml = video [
+            src videoUrl,
+            Html.Attributes.attribute "autoplay" "",
+            Html.Attributes.attribute "controls" ""
+          ] []
+      buttons = if | local -> [windowCloseButton address action, fullscreenButton address action] --TODO
+                   | otherwise -> [fullscreenButton address action] --TODO
+  in window (windowHeader title buttons) [videoHtml] local
 
 messageView : ChatMessage -> Html
 messageView message = li [] [text message.message]
