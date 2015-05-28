@@ -15,7 +15,7 @@ type alias User a = { a | name: String }
 -- Views(no signals appears here)
 header : Context a -> Html
 header c = div [class "navbar navbar-default"] [
-            div [class "container-fluid"] [
+            div [class "container"] [
               div [class "navbar-header"] [
                 a [class "navbar-brand", href "/"] [
                   text "Video Chat"

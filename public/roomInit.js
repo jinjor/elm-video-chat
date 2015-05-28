@@ -84,7 +84,7 @@ function onerror(e) {
 }
 
 function ceateConnectionManager() {
-  var connections = {};
+  var connections = {};//TODO upstream/downstream
   var getConnection = function(id) {
     if(!id) {
       throw new Error('id is null');
@@ -106,6 +106,12 @@ function ceateConnectionManager() {
       return connections[key];
     });
   };
+  var removeConnection = function(peerId) {
+    delete connections[peerId];
+  };
+  var removeAllConnections = function(){
+    connections = {};
+  };
 
   //----
   var streams = {};
@@ -115,11 +121,17 @@ function ceateConnectionManager() {
   var getStream = function(peerId, mediaType) {
     return streams[peerId + mediaType];
   };
+  var removeStream = function(peerId, mediaType) {
+    delete streams[peerId + mediaType];
+  };
   return {
     getConnection: getConnection,
     getAllConnections: getAllConnections,
+    removeConnection: removeConnection,
+    removeAllConnections: removeAllConnections,
     getStream: getStream,
-    addStream: addStream
+    addStream: addStream,
+    removeStream: removeStream
   };
 }
 
@@ -211,6 +223,13 @@ function answerSDP(clientId, cm, send, e) {
   pc.onaddstream = function(e) {
     roomSignal.ports.setVideoUrl.send([[_from, "video"], URL.createObjectURL(e.stream)]);
   };
+  pc.onremovestream = function(e) {
+    console.log('onremovestream');
+    pc.close();
+    cm.removeConnection(_from);
+    cm.removeStream(_from, "video");
+    roomSignal.ports.removeConnection.send([_from, "video"]);//TODO mediaType
+  };
   roomSignal.ports.addConnection.send([_from, "video"]);//TODO mediaType
   pc.setRemoteDescription(
     new RTCSessionDescription(e.data),
@@ -246,6 +265,17 @@ function addCandidate(clientId, cm, send, e) {
   }
 }
 
+function endStreaming(clientId, cm, send, mediaType) {
+  cm.getAllConnections().forEach(function(pc) {
+    var stream = cm.getStream(clientId, mediaType);
+    pc.removeStream(stream);
+    pc.close();
+    cm.removeStream(clientId, mediaType);
+    roomSignal.ports.setLocalVideoUrl.send([mediaType, null]);
+  });
+  cm.removeAllConnections();
+}
+
 function join(clientId, cm, send, e, cb) {
   ["mic", "video", "screen"].forEach(function(mediaType) {
     var stream = cm.getStream(clientId, mediaType);
@@ -278,6 +308,7 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   },
   updateRoom: getRoom(),
   addConnection: ["",""],
+  removeConnection: ["",""],
   setVideoUrl: [["", ""],""],
   setLocalVideoUrl: ["", ""],
   join: ["", {
@@ -314,6 +345,9 @@ getRoomInfo(function(room) {
   });
   roomSignal.ports.startStreaming.subscribe(function(mediaType) {
     offerSDP(clientId, cm, send, mediaType);
+  });
+  roomSignal.ports.endStreaming.subscribe(function(mediaType) {
+    endStreaming(clientId, cm, send, mediaType);
   });
   roomSignal.ports.sendChat.subscribe(function(message) {
     var time = new Date().getTime();

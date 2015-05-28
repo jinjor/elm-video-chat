@@ -72,6 +72,8 @@ port sendChat : Signal String
 port sendChat = chatSendMB.signal
 port startStreaming : Signal String
 port startStreaming = startStreamingMB.signal
+port endStreaming : Signal String
+port endStreaming = endStreamingMB.signal
 
 
 port join : Signal (PeerId, User)
@@ -106,6 +108,10 @@ port localVideoUrlList' = Signal.map (\dict -> (Signal.send actions.address (Upd
 port addConnection : Signal Connection
 port addConnection' : Signal (Task x ())
 port addConnection' = Signal.map (\conn -> (Signal.send actions.address (AddConnection conn))) addConnection
+
+port removeConnection : Signal Connection
+port removeConnection' : Signal (Task x ())
+port removeConnection' = Signal.map (\conn -> (Signal.send actions.address (RemoveConnection conn))) removeConnection
 
 
 -- Statics
@@ -145,6 +151,7 @@ type Action
   | InitRoom Room
   | RemovePeer String
   | AddConnection Connection
+  | RemoveConnection Connection
   | UpdateField String
   | AddChatMessage ChatMessage
   | UpdateVideoUrls (Dict Connection String)
@@ -173,6 +180,10 @@ update action context =
       AddConnection conn ->
         { context |
           connections <- Set.insert conn context.connections
+        }
+      RemoveConnection conn ->
+        { context |
+          connections <- Set.remove conn context.connections
         }
       UpdateField input ->
         { context |
@@ -211,6 +222,9 @@ chatSendMB = Signal.mailbox ""
 startStreamingMB : Signal.Mailbox String
 startStreamingMB = Signal.mailbox ""
 
+endStreamingMB : Signal.Mailbox String
+endStreamingMB = Signal.mailbox ""
+
 
 -- Views(no signals appears here)
 
@@ -225,18 +239,20 @@ is13 code =
   if code == 13 then Ok () else Err "not the right key code"
 
 
-fullscreenButton : Signal.Address a -> a -> Html
-fullscreenButton address event = div [class "btn pull-right", onClick address event] [
+fullscreenButton : Html
+fullscreenButton = div [class "btn pull-right"] [
     div [class "glyphicon glyphicon-fullscreen"] []
   ]
 
-windowCloseButton : Signal.Address a -> a -> Html
-windowCloseButton address event = div [class "btn pull-right", onClick address event] [
+windowCloseButton : String -> Html
+windowCloseButton mediaType = div [class "btn pull-right", onClick endStreamingMB.address mediaType] [
     div [class "glyphicon glyphicon-remove"] []
   ]
 
 windowHeader : String -> List Html -> Html
-windowHeader title buttons = div [class "panel-heading"] ((text title) :: buttons)
+windowHeader title buttons =
+  let buttonGroup = div [class "btn-group pull-right"] buttons
+  in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
 ----------------
 view : Context -> Html
@@ -249,10 +265,9 @@ view c = div [] [
     ]
   ]
 
-window : Html -> List Html -> Bool -> Html
-window header contents local =
-  let body = div [class "panel-body"] contents
-      face = if | local -> "panel-primary"
+window : Html -> Html -> Bool -> Html
+window header body local =
+  let face = if | local -> "panel-primary"
                 | otherwise -> "panel-default"
   in div [class "col-sm-6 col-md-4"] [
         div [class ("panel " ++ face)] [header, body]
@@ -268,8 +283,8 @@ madiaIcon mediaType =
       "screen" -> "fa fa-desktop"
   in i [class classes] []
 
-madiaButton : Signal.Address Action -> Context -> String -> Html
-madiaButton address c mediaType =
+madiaButton : Context -> String -> Html
+madiaButton c mediaType =
   let classes = case mediaType of
         "video" -> "fa fa-video-camera"
         "mic" -> "fa fa-microphone"
@@ -279,14 +294,16 @@ madiaButton address c mediaType =
         Nothing -> False
       face = if | streaming -> "btn-primary"
                 | otherwise -> "btn-default"
+      address = if | streaming -> endStreamingMB.address
+                   | otherwise -> startStreamingMB.address
   in button [
     Html.Attributes.type' "button",
     class ("btn " ++ face),
-    onClick startStreamingMB.address mediaType
+    onClick address mediaType
   ] [madiaIcon mediaType]
 
 madiaButtons : Signal.Address Action -> Context -> Html
-madiaButtons address c = div [ Html.Attributes.attribute "role" "group", class "btn-group"] (List.map (madiaButton address c) mediaTypes)
+madiaButtons address c = div [ Html.Attributes.attribute "role" "group", class "btn-group"] (List.map (madiaButton c) mediaTypes)
 
 peerView : Signal.Address Action -> Context -> PeerId -> Html
 peerView address c peer =
@@ -306,7 +323,7 @@ peerViews address c peers = ul [class "list-unstyled hidden-xs"] (List.map (\pee
 
 statusView : Context -> Html
 statusView c = div [class "col-sm-3 col-md-3"] [
-    div [class "panel panel-default"] [
+    div [class "row panel panel-default"] [
       div [class "panel-body"] [
         roomTitle c,
         madiaButtons c.address c,
@@ -333,7 +350,7 @@ localMediaWindowView : Signal.Address Action -> Context -> String -> Maybe Html
 localMediaWindowView address c mediaType =
   let title = "Local " ++ mediaType
       maybeVideoUrl = Dict.get mediaType c.localVideoUrls
-  in Maybe.map (\videoUrl -> mediaWindowView c.address NoOp c title videoUrl True) maybeVideoUrl
+  in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl True) maybeVideoUrl
 
 remoteMediaWindowView : Signal.Address Action -> Context -> Connection -> Maybe Html
 remoteMediaWindowView address c connection =
@@ -341,17 +358,17 @@ remoteMediaWindowView address c connection =
       user = userOf c peerId
       title = String.concat [user.name, "'s ", mediaType, " view."]
       maybeVideoUrl = Dict.get connection c.videoUrls
-  in Maybe.map (\videoUrl -> mediaWindowView address (CloseWindow connection) c title videoUrl False) maybeVideoUrl
+  in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
 
-mediaWindowView : Signal.Address Action -> Action -> Context -> String -> String -> Bool -> Html
-mediaWindowView address action c title videoUrl local =
+mediaWindowView : Context -> String -> String -> String -> Bool -> Html
+mediaWindowView c mediaType title videoUrl local =
   let videoHtml = video [
             src videoUrl,
             Html.Attributes.attribute "autoplay" ""
           ] []
-      buttons = if | local -> [windowCloseButton address action, fullscreenButton address action] --TODO
-                   | otherwise -> [fullscreenButton address action] --TODO
-  in window (windowHeader title buttons) [videoHtml] local
+      buttons = if | local -> [windowCloseButton mediaType, fullscreenButton] --TODO
+                   | otherwise -> [fullscreenButton] --TODO
+  in window (windowHeader title buttons) videoHtml local
 
 messageView : ChatMessage -> Html
 messageView message = li [] [text message.message]
