@@ -3,7 +3,7 @@ module.exports = function(socket, storage, session) {
 
   socket.on('message', function(s) {
     var data = JSON.parse(s);
-    console.log(data);
+    console.log(data.type);
     if (data.type === 'offerSDP') {
       var roomId = data.room;
       var room = session.getRoom(roomId);
@@ -34,8 +34,6 @@ module.exports = function(socket, storage, session) {
     } else if (data.type === 'answerCandidate') {
       var roomId = data.room;
       var room = session.getRoom(roomId);
-      console.log(data.to);
-      console.log(room.getClientIds());
       var client = room.getClient(data.to);
       client.send(JSON.stringify({
         type: 'answerCandidate',
@@ -43,7 +41,6 @@ module.exports = function(socket, storage, session) {
         data: data.data
       }));
     }
-
   });
   socket.on('close', function() {
     session.getRooms().forEach(function(room) {

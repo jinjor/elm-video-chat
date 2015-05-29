@@ -16,14 +16,12 @@ var authenticate = function(user) {
 };
 
 var app = express();
-app.use(session({
+var sessionHandler = session({
   name: 'elm-video-chat',
-  secret: 'ssshhhhh',
-  cookie: {
-    secure: false,
-    httpOnly: false
-  }
-}));
+  secret: 'secret',
+  cookie: { secure: false }
+});
+app.use(sessionHandler);
 app.use(bodyParser());
 
 var loginCheck = function(req, res, next) {
@@ -53,25 +51,35 @@ app.use(staticRouter);
 // setup REST
 rest(app, staticRouter, storage, globalSession);
 
+var server = http.createServer(app);
+
 // setup websocket
 var WebSocketServer = require('ws').Server;
 var wss = new WebSocketServer({
+  path: "/ws",
   port: 9999
 });
 
 wss.on('connection', function(socket) {
-  // console.log(socket.upgradeReq.headers.cookie);
-  var socketId = uuid.v1();
-  var user = {};
-  if (!authenticate(user)) {
-    conn.end();
-    return;
-  }
-  rtc(socket, storage, globalSession);
-  ws(socket, storage, globalSession);
+  var request = socket.upgradeReq;
+  var response = {writeHead: {}};
+  sessionHandler(request, response, function (err) {
+    var email = request.session.user;
+    var user = {
+      name: email.split('@')[0],
+      email: email
+    };
+    if (!authenticate(user)) {
+      conn.end();
+      return;
+    }
+    rtc(socket, storage, globalSession, user);
+    ws(socket, storage, globalSession, user);
+  });
+
 });
 
 
 
-// listen for each
-app.listen(3000);
+// listen
+server.listen(3000);

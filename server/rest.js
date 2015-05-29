@@ -1,3 +1,5 @@
+
+
 module.exports = function(app, staticRouter, storage, session, ws) {
   app.get('/room/:id', function(req, res, next) {
     var roomId = req.params.id;
@@ -9,15 +11,16 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     var roomId = req.params.id;
     var room = session.getRoom(roomId);
     if (room) {
+
+      var users = {};
+      room.getClientIds().forEach(function(clientId) {
+        users[clientId] = session.users[clientId];
+      });
+
       res.send({
         id: roomId,
-        peers: room.getClientIds().map(function(clientId) {
-          return {
-            id: clientId,
-            name: clientId.substring(0, 7),
-            mail: 'foo@bar'
-          }
-        })
+        peers: room.getClientIds(),
+        users: users
       });
     } else {
       res.status(404).end();
