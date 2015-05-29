@@ -4,11 +4,13 @@ var watch = require('gulp-watch');
 var elm = require('gulp-elm');
 var cp = require('child_process');
 var server = require( 'gulp-develop-server' );
+var uglify = require('gulp-uglify');
 
 gulp.task('build', function() {
   return gulp.src(['src/*.elm'])
     .pipe(plumber())
     .pipe(elm())
+    // .pipe(uglify())
     .pipe(gulp.dest('public'));
 
 });

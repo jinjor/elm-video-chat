@@ -4,11 +4,10 @@ import Http
 import Json.Decode as Json exposing ((:=))
 import Task exposing (..)
 
-import Graphics.Element exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
-import Mouse
+
 import String
 import Maybe
 import Dict exposing (Dict)

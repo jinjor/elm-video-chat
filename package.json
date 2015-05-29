@@ -24,6 +24,7 @@
     "gulp-develop-server": "^0.4.2",
     "gulp-elm": "^0.2.0",
     "gulp-plumber": "^1.0.0",
+    "gulp-uglify": "^1.2.0",
     "gulp-watch": "^4.2.4"
   }
 }
