@@ -326,6 +326,17 @@ function onMessage(clientId, cm, send, data) {
   }
 };
 
+function requestFullScreen(videoUrl) {
+  var video = document.querySelector('video[src="' + videoUrl + '"]');
+  if (video.requestFullScreen) {
+    video.requestFullScreen();
+  } else if (video.mozRequestFullScreen) {
+    video.mozRequestFullScreen();
+  } else if (video.webkitRequestFullScreen) {
+    video.webkitRequestFullScreen();
+  }
+}
+
 
 //----------
 polyfill();
@@ -387,4 +398,10 @@ getRoomInfo(function(room) {
       message: message
     });
   });
+
+  roomSignal.ports.requestFullScreen.subscribe(function(videoUrl) {
+    requestFullScreen(videoUrl);
+  });
+
+
 });

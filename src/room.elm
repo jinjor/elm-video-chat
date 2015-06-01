@@ -73,7 +73,8 @@ port startStreaming : Signal String
 port startStreaming = startStreamingMB.signal
 port endStreaming : Signal String
 port endStreaming = endStreamingMB.signal
-
+port requestFullScreen : Signal String
+port requestFullScreen = requestFullScreenMB.signal
 
 port join : Signal (PeerId, User)
 port join' : Signal (Task x ())
@@ -224,6 +225,8 @@ startStreamingMB = Signal.mailbox ""
 endStreamingMB : Signal.Mailbox String
 endStreamingMB = Signal.mailbox ""
 
+requestFullScreenMB : Signal.Mailbox String
+requestFullScreenMB = Signal.mailbox ""
 
 -- Views(no signals appears here)
 
@@ -238,8 +241,8 @@ is13 code =
   if code == 13 then Ok () else Err "not the right key code"
 
 
-fullscreenButton : Html
-fullscreenButton = div [class "btn pull-right"] [
+fullscreenButton : String -> Html
+fullscreenButton videoURL = div [class "btn pull-right", onClick requestFullScreenMB.address videoURL] [
     div [class "glyphicon glyphicon-fullscreen"] []
   ]
 
@@ -365,8 +368,8 @@ mediaWindowView c mediaType title videoUrl local =
             src videoUrl,
             Html.Attributes.attribute "autoplay" ""
           ] []
-      buttons = if | local -> [windowCloseButton mediaType, fullscreenButton] --TODO
-                   | otherwise -> [fullscreenButton] --TODO
+      buttons = if | local -> [windowCloseButton mediaType, fullscreenButton videoUrl]
+                   | otherwise -> [fullscreenButton videoUrl]
   in window (windowHeader title buttons) videoHtml local
 
 messageView : ChatMessage -> Html
