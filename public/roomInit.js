@@ -305,10 +305,13 @@ function leave(clientId, cm, send, e, cb) {
 function closeRemoteStream(cm, remoteClientId, mediaType) {
   var pc = cm.getConnection(remoteClientId);
   var stream = cm.getStream(remoteClientId, mediaType);
-  pc.removeStream(stream);
+  if(stream) {
+    pc.removeStream(stream);
+    cm.removeStream(remoteClientId, mediaType);
+  }
+
   pc.close();
   cm.removeConnection(remoteClientId);
-  cm.removeStream(remoteClientId, mediaType);
   roomSignal.ports.setVideoUrl.send([[remoteClientId, mediaType], null]);
 }
 
@@ -350,16 +353,17 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   removeConnection: ["",""],
   setVideoUrl: [["", ""],""],
   setLocalVideoUrl: ["", ""],
-  join: ["", {
-    name: '',
-    email: ''
-  }],
-  leave: ""
+  join: null,
+  leave: "",
+  initRoom: "",
+  setRoomName: ""
 });
 getRoomInfo(function(room) {
+
   var cm = ceateConnectionManager();
   var clientId = uuid();
 
+  roomSignal.ports.setRoomName.send(room.id);
   room.peers.forEach(function(peerId) {
     var user = room.users[peerId];
     roomSignal.ports.join.send([peerId, user]);
@@ -402,6 +406,4 @@ getRoomInfo(function(room) {
   roomSignal.ports.requestFullScreen.subscribe(function(videoUrl) {
     requestFullScreen(videoUrl);
   });
-
-
 });

@@ -1,13 +1,11 @@
 
-
-
-
 function Room(id) {
   this.id = id;
   this.clients = {};
   this.messages = [];
 }
 Room.prototype.addClient = function(id, socket) {
+  socket.__id = id;
   this.clients[id] = socket;
 };
 Room.prototype.getClient = function(id) {
@@ -16,9 +14,9 @@ Room.prototype.getClient = function(id) {
 Room.prototype.removeClient = function(socket) {
   var removedId = null;
   this.getClientIds().forEach(function(id) {
-    if(this.clients[id] === socket) {
-      delete this.clients[id];
+    if(id === socket.__id) {
       removedId = id;
+      delete this.clients[id];
     }
   }.bind(this));
   return removedId;

@@ -40,20 +40,7 @@ module.exports = function(socket, storage, session) {
         from: data.from,
         data: data.data
       }));
-    } 
+    }
   });
-  socket.on('close', function() {
-    session.getRooms().forEach(function(room) {
-      var removed = room.removeClient(socket);
-      if (removed) {
-        room.getClients().forEach(function(client) {
-          client.send(JSON.stringify({
-            type: 'update'
-          }));
-        });
-      }
-    });
-  });
-
 
 };

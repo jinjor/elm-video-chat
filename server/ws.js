@@ -50,6 +50,7 @@ module.exports = function(socket, storage, session, user) {
   socket.on('close', function() {
     session.getRooms().forEach(function(room) {
       var removedId = room.removeClient(socket);
+      console.log('removed: ' + removedId)
       if (removedId) {
         room.getOtherClients(removedId).forEach(function(client) {
           client.send(JSON.stringify({

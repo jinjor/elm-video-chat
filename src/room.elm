@@ -56,13 +56,17 @@ roomDecoder =
       ("users" := Json.dict user)
 
 fetchRoom : String -> Task Http.Error ()
-fetchRoom roomId = (getRoomInfo roomId) `andThen` (\room -> (Signal.send actions.address (InitRoom room))) `onError` (\err -> log "err" (succeed ()))
+fetchRoom roomId = (getRoomInfo roomId)
+    `andThen` (\room -> (Signal.send actions.address (InitRoom room)))
+    -- `andThen` (\room -> (Signal.send initRoomMB.address room.id))
+    `onError` (\err -> log "err" (succeed ()))
 
-port runner : Signal (Task Http.Error ())
-port runner = Signal.map fetchRoom updateRoom
+-- port runner : Signal (Task Http.Error ())
+-- port runner = Signal.map fetchRoom updateRoom
 
 port updateRoom : Signal String
 
+port initRoom : Signal String
 
 port receiveChat : Signal ChatMessage
 port updateChat : Signal (Task x ())
@@ -76,9 +80,13 @@ port endStreaming = endStreamingMB.signal
 port requestFullScreen : Signal String
 port requestFullScreen = requestFullScreenMB.signal
 
-port join : Signal (PeerId, User)
+port join : Signal (Maybe (PeerId, User))
 port join' : Signal (Task x ())
-port join' = Signal.map (\(peerId, user) -> (Signal.send actions.address (Join peerId user))) join
+port join' =
+  let f a = case a of
+    Just (peerId, user) -> Join peerId user
+    Nothing -> NoOp
+  in Signal.map (\a -> (Signal.send actions.address (f a))) join
 
 port leave : Signal PeerId
 port leave' : Signal (Task x ())
@@ -113,6 +121,9 @@ port removeConnection : Signal Connection
 port removeConnection' : Signal (Task x ())
 port removeConnection' = Signal.map (\conn -> (Signal.send actions.address (RemoveConnection conn))) removeConnection
 
+port setRoomName : Signal String
+port setRoomName' : Signal (Task x ())
+port setRoomName' = Signal.map (\name -> (Signal.send actions.address (SetRoomName name))) setRoomName
 
 -- Statics
 mediaTypes = ["mic", "video", "screen"]
@@ -149,6 +160,7 @@ type Action
   = NoOp
   | CloseWindow Connection
   | InitRoom Room
+  | SetRoomName String
   | RemovePeer String
   | AddConnection Connection
   | RemoveConnection Connection
@@ -166,6 +178,10 @@ update action context =
       CloseWindow target ->
         { context |
           connections <- Set.remove target context.connections
+        }
+      SetRoomName roomName ->
+        { context |
+          roomName <- roomName
         }
       InitRoom room ->
         { context |
@@ -215,6 +231,9 @@ update action context =
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
+
+initRoomMB : Signal.Mailbox String
+initRoomMB = Signal.mailbox ""
 
 chatSendMB : Signal.Mailbox String
 chatSendMB = Signal.mailbox ""
