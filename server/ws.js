@@ -10,7 +10,7 @@ module.exports = function(socket, storage, session, user) {
       }
       session.users[data.from] = user;
       room.addClient(data.from, socket);
-      room.getClients().forEach(function(client) {
+      room.getOtherClients(data.from).forEach(function(client) {
         // client.send(JSON.stringify({
         //   type: 'update'
         // }));
@@ -38,6 +38,12 @@ module.exports = function(socket, storage, session, user) {
         }));
       });
 
+    } else if (data.type === 'endStream') {
+      var roomId = data.room;
+      var room = session.getRoom(roomId);
+      room.getOtherClients(data.from).forEach(function(client) {
+        client.send(JSON.stringify(data));
+      });
     }
 
   });
@@ -45,7 +51,7 @@ module.exports = function(socket, storage, session, user) {
     session.getRooms().forEach(function(room) {
       var removedId = room.removeClient(socket);
       if (removedId) {
-        room.getClients().forEach(function(client) {
+        room.getOtherClients(removedId).forEach(function(client) {
           client.send(JSON.stringify({
             from: removedId,
             type: 'leave'

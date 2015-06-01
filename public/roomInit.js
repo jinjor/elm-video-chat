@@ -160,11 +160,13 @@ function offerSDP(clientId, cm, send, mediaType) {
 
   navigator.getUserMedia(mediaOptions, function(stream) {
     cm.addStream(clientId, mediaType, stream);
+    roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
+
     getRoomInfo(function(room) {
       var peers = room.peers;
       peers.forEach(function(peerId) {
         sendOfferToPeer(clientId, cm, send, peerId, stream, function(){
-          roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
+
         });
       });
     });
@@ -211,6 +213,7 @@ function sendOfferToPeer(clientId, cm, send, peerId, stream, cb) {
 function answerSDP(clientId, cm, send, e) {
   var _from = e.from;
   var pc = cm.getConnection(_from);
+  var mediaType = "video";//TODO
   pc.onicecandidate = function(e) {
     if (e.candidate) {
       send({
@@ -221,16 +224,17 @@ function answerSDP(clientId, cm, send, e) {
     }
   };
   pc.onaddstream = function(e) {
-    roomSignal.ports.setVideoUrl.send([[_from, "video"], URL.createObjectURL(e.stream)]);
+    cm.addStream(_from, mediaType, e.stream);
+    roomSignal.ports.setVideoUrl.send([[_from, mediaType], URL.createObjectURL(e.stream)]);
   };
   pc.onremovestream = function(e) {
     console.log('onremovestream');
     pc.close();
     cm.removeConnection(_from);
-    cm.removeStream(_from, "video");
-    roomSignal.ports.removeConnection.send([_from, "video"]);//TODO mediaType
+    cm.removeStream(_from, mediaType);
+    roomSignal.ports.removeConnection.send([_from, mediaType]);
   };
-  roomSignal.ports.addConnection.send([_from, "video"]);//TODO mediaType
+  roomSignal.ports.addConnection.send([_from, mediaType]);
   pc.setRemoteDescription(
     new RTCSessionDescription(e.data),
     function() {
@@ -266,14 +270,19 @@ function addCandidate(clientId, cm, send, e) {
 }
 
 function endStreaming(clientId, cm, send, mediaType) {
+  roomSignal.ports.setLocalVideoUrl.send([mediaType, null]);
+  var stream = cm.getStream(clientId, mediaType);
   cm.getAllConnections().forEach(function(pc) {
-    var stream = cm.getStream(clientId, mediaType);
     pc.removeStream(stream);
     pc.close();
-    cm.removeStream(clientId, mediaType);
-    roomSignal.ports.setLocalVideoUrl.send([mediaType, null]);
   });
+  cm.removeStream(clientId, mediaType);
   cm.removeAllConnections();
+  send({
+    type: 'endStream',
+    to: clientId,
+    mediaType: mediaType
+  });
 }
 
 function join(clientId, cm, send, e, cb) {
@@ -285,6 +294,23 @@ function join(clientId, cm, send, e, cb) {
   });
   cb();
 }
+function leave(clientId, cm, send, e, cb) {
+  cm.removeConnection(e.from);
+  ["mic", "video", "screen"].forEach(function(mediaType) {
+    closeRemoteStream(cm, e.from, mediaType);
+  });
+  cb();
+}
+
+function closeRemoteStream(cm, remoteClientId, mediaType) {
+  var pc = cm.getConnection(remoteClientId);
+  var stream = cm.getStream(remoteClientId, mediaType);
+  pc.removeStream(stream);
+  pc.close();
+  cm.removeConnection(remoteClientId);
+  cm.removeStream(remoteClientId, mediaType);
+  roomSignal.ports.setVideoUrl.send([[remoteClientId, mediaType], null]);
+}
 
 function onMessage(clientId, cm, send, data) {
   if (data.type === 'offerSDP') {
@@ -295,6 +321,8 @@ function onMessage(clientId, cm, send, data) {
     addCandidate(clientId, cm, send, data);
   } else if (data.type === 'answerCandidate') {
     addCandidate(clientId, cm, send, data);
+  } else if (data.type === 'endStream') {
+    closeRemoteStream(cm, data.from, data.mediaType);
   }
 };
 
@@ -338,7 +366,9 @@ getRoomInfo(function(room) {
         roomSignal.ports.join.send([e.from, e.user]);
       });
     } else if (type === 'leave') {
-      roomSignal.ports.leave.send(e.from);
+      leave(clientId, cm, send, e, function() {
+        roomSignal.ports.leave.send(e.from);
+      });
     } else {
       onMessage(clientId, cm, send, e);
     }

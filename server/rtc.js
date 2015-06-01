@@ -40,7 +40,7 @@ module.exports = function(socket, storage, session) {
         from: data.from,
         data: data.data
       }));
-    }
+    } 
   });
   socket.on('close', function() {
     session.getRooms().forEach(function(room) {
