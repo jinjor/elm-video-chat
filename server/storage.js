@@ -26,7 +26,12 @@ var addUser = function(id, name, email) {
   return Promise.resolve(user);
 };
 var getUser = function(id) {
-  return Promise.resolve(users[id]);
+  var user = users[id] || {
+    id: id,
+    name: id.split('@')[0],
+    email: id
+  };
+  return Promise.resolve(user);
 };
 
 module.exports = {

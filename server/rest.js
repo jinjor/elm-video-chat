@@ -11,21 +11,24 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     var roomId = req.params.id;
     var room = session.getRoom(roomId);
     if (room) {
-
-      var users = {};
-      room.getClientIds().forEach(function(clientId) {
-        users[clientId] = session.users[clientId];
-      });
-
-      res.send({
-        id: roomId,
-        peers: room.getClientIds(),
-        users: users
+      storage.getUser(req.session.user).then(function(user) {
+        var users = {};
+        var clientIds = room.getClientIds();
+        clientIds.forEach(function(clientId) {
+          users[clientId] = session.users[clientId];
+        });
+        res.send({
+          user: user,
+          room: {
+            id: roomId,
+            peers: clientIds,
+            users: users
+          }
+        });
       });
     } else {
       res.status(404).end();
     }
-
   });
   app.get('/api/rooms', function(req, res) {
     var rooms = session.getRooms();

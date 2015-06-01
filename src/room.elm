@@ -21,7 +21,8 @@ import Debug exposing (log)
 -- Models
 type alias Room = { id:String, peers: List PeerId, users: Dict PeerId User}
 type alias User = { name:String, email:String }
-type alias Context = { roomName:String
+type alias Context = { me: User
+                      , roomName:String
                       , address: Signal.Address Action
                       , peers: Set PeerId
                       , users: Dict PeerId User
@@ -125,6 +126,10 @@ port setRoomName : Signal String
 port setRoomName' : Signal (Task x ())
 port setRoomName' = Signal.map (\name -> (Signal.send actions.address (SetRoomName name))) setRoomName
 
+port setMe : Signal User
+port setMe' : Signal (Task x ())
+port setMe' = Signal.map (\name -> (Signal.send actions.address (SetMe name))) setMe
+
 -- Statics
 mediaTypes = ["mic", "video", "screen"]
 
@@ -135,7 +140,8 @@ connection peer mediaType =(peer, mediaType)
 
 context : Signal Context
 context =
-  let initial = { roomName= "　"
+  let initial = { roomName = "　"
+                  , me = {name="", email=""}
                   , address = actions.address
                   , peers = Set.empty
                   , users = Dict.empty
@@ -160,6 +166,7 @@ type Action
   = NoOp
   | CloseWindow Connection
   | InitRoom Room
+  | SetMe User
   | SetRoomName String
   | RemovePeer String
   | AddConnection Connection
@@ -188,6 +195,10 @@ update action context =
           roomName <- room.id,
           peers <- Set.fromList room.peers,
           users <- room.users
+        }
+      SetMe me ->
+        { context |
+          me <- me
         }
       RemovePeer target ->
         { context |
@@ -278,7 +289,7 @@ windowHeader title buttons =
 ----------------
 view : Context -> Html
 view c = div [] [
-    Header.header {user= {name="ore"}},
+    Header.header {user= {name=c.me.name}},
     div [class "container"] [
       statusView c,
       mainView c
@@ -332,7 +343,8 @@ peerView address c peer =
   in li [] [
     div [] [
       i [class "fa fa-user"] [],
-      text user.name
+      -- text user.name
+      text peer
     ]
   ]
 

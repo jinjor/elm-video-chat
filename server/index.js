@@ -24,6 +24,11 @@ var sessionHandler = session({
 app.use(sessionHandler);
 app.use(bodyParser());
 
+
+storage.addUser('foo@gmail.com', 'Foo', 'foo@gmail.com');
+storage.addUser('bar@gmail.com', 'Bar', 'bar@gmail.com');
+
+
 var loginCheck = function(req, res, next) {
   if (req.method === 'POST' && req.url === '/api/login') {
     var email = req.body.email;
@@ -65,16 +70,14 @@ wss.on('connection', function(socket) {
   var response = {writeHead: {}};
   sessionHandler(request, response, function (err) {
     var email = request.session.user;
-    var user = {
-      name: email.split('@')[0],
-      email: email
-    };
-    if (!authenticate(user)) {
-      conn.end();
-      return;
-    }
-    rtc(socket, storage, globalSession, user);
-    ws(socket, storage, globalSession, user);
+    storage.getUser(email).then(function(user) {
+      if (!authenticate(user)) {
+        conn.end();
+        return;
+      }
+      rtc(socket, storage, globalSession, user);
+      ws(socket, storage, globalSession, user);
+    });
   });
 
 });

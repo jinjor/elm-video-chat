@@ -10,10 +10,7 @@ module.exports = function(socket, storage, session, user) {
       }
       session.users[data.from] = user;
       room.addClient(data.from, socket);
-      room.getOtherClients(data.from).forEach(function(client) {
-        // client.send(JSON.stringify({
-        //   type: 'update'
-        // }));
+      room.getClients(data.from).forEach(function(client) {
         client.send(JSON.stringify({
           from: data.from,
           type: 'join',

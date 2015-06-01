@@ -91,7 +91,6 @@ function ceateConnectionManager() {
     }
     if (!connections[id]) {
       console.log('not exists: ' + id);
-      console.log(connections);
       var pc = new RTCPeerConnection({
         iceServers: [{
           url: 'stun:localhost:3478'
@@ -137,9 +136,17 @@ function ceateConnectionManager() {
 
 
 function getRoomInfo(cb) {
+  getInitialInfo(function(initialData) {
+    cb(initialData.room);
+  })
+}
+
+function getInitialInfo(cb) {
   var xhr = new XMLHttpRequest();
   xhr.open('GET', '/api/room/' + getRoom(), true);
   xhr.responseType = 'json';
+  xhr.setRequestHeader('Cache-Control', 'no-cache');
+  xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
   xhr.onload = function(e) {
     if (this.status == 200) {
       cb(this.response);
@@ -165,7 +172,7 @@ function offerSDP(clientId, cm, send, mediaType) {
     getRoomInfo(function(room) {
       var peers = room.peers;
       peers.forEach(function(peerId) {
-        sendOfferToPeer(clientId, cm, send, peerId, stream, function(){
+        sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
 
         });
       });
@@ -309,7 +316,6 @@ function closeRemoteStream(cm, remoteClientId, mediaType) {
     pc.removeStream(stream);
     cm.removeStream(remoteClientId, mediaType);
   }
-
   pc.close();
   cm.removeConnection(remoteClientId);
   roomSignal.ports.setVideoUrl.send([[remoteClientId, mediaType], null]);
@@ -356,22 +362,26 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   join: null,
   leave: "",
   initRoom: "",
-  setRoomName: ""
+  setRoomName: "",
+  setMe: {name: "", email:""}
 });
-getRoomInfo(function(room) {
+getInitialInfo(function(initial) {
 
+  var room = initial.room;
   var cm = ceateConnectionManager();
   var clientId = uuid();
 
+  roomSignal.ports.setMe.send(initial.user);
   roomSignal.ports.setRoomName.send(room.id);
   room.peers.forEach(function(peerId) {
+    console.log(peerId);
     var user = room.users[peerId];
     roomSignal.ports.join.send([peerId, user]);
   });
 
   var send = setupWebSocket(room, clientId, function(e) {
     var type = e.type;
-    console.log(type)
+    // console.log(type);
     if (type === 'update') {
       roomSignal.ports.updateRoom.send(getRoom());
     } else if (type === 'message') {
