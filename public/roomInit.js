@@ -372,7 +372,7 @@ getInitialInfo(function(initial) {
   roomSignal.ports.setMe.send(initial.user);
   roomSignal.ports.setRoomName.send(room.id);
   room.peers.forEach(function(peerId) {
-    console.log(peerId);
+    // console.log(peerId);
     var user = room.users[peerId];
     roomSignal.ports.join.send([peerId, user]);
   });
