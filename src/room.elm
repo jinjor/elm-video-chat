@@ -43,31 +43,6 @@ type alias PeerId = String
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias ChatMessage = { userId: String, message: String }
--- Data access
-
-getRoomInfo : String -> Task Http.Error Room
-getRoomInfo roomId = Http.get roomDecoder (log "url" ("/api/room/" ++ roomId))
-
-roomDecoder : Json.Decoder Room
-roomDecoder =
-  let peer = Json.string
-      user = Json.object2 (\name email -> { name=name, email=email })
-          ("name" := Json.string)
-          ("email" := Json.string)
-  in
-    Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
-      ("id" := Json.string)
-      ("peers" := Json.list peer)
-      ("users" := Json.dict user)
-
-fetchRoom : String -> Task Http.Error ()
-fetchRoom roomId = (getRoomInfo roomId)
-    `andThen` (\room -> (Signal.send actions.address (InitRoom room)))
-    -- `andThen` (\room -> (Signal.send initRoomMB.address room.id))
-    `onError` (\err -> log "err" (succeed ()))
-
--- port runner : Signal (Task Http.Error ())
--- port runner = Signal.map fetchRoom updateRoom
 
 
 port runner : Signal ()
@@ -366,16 +341,13 @@ peerView address c peer =
   in li [] [
     div [] [
       i [class "fa fa-user"] [],
-      -- text user.name
-      text peer
+      text user.name
+      -- text peer
     ]
   ]
 
 peerViews : Signal.Address Action -> Context -> List PeerId -> Html
 peerViews address c peers = ul [class "list-unstyled hidden-xs"] (List.map (\peer -> peerView address c peer) peers)
-
--- upperView : Context -> Html
--- upperView c = div [class "col-md-12"] [statusView c, mainView c]
 
 statusView : Context -> Html
 statusView c = div [class "col-sm-3 col-md-3"] [
@@ -445,9 +417,6 @@ chatView c = div [class "col-md-12"] [chatTimeline c.chatMessages, chatInput c]
 -- Main
 main : Signal Html
 main = view <~ context
-
--- main : Signal Html
--- main = text <~ WS.message
 
 
 
