@@ -18,6 +18,7 @@ import Signal exposing (..)
 
 import Lib.Header as Header
 import Lib.WebSocket as WS
+import Lib.VideoControl as VideoControl
 
 import Debug exposing (log)
 
@@ -97,8 +98,6 @@ port startStreaming : Signal String
 port startStreaming = startStreamingMB.signal
 port endStreaming : Signal String
 port endStreaming = endStreamingMB.signal
-port requestFullScreen : Signal String
-port requestFullScreen = requestFullScreenMB.signal
 
 port join : Signal (Maybe (PeerId, User))
 port join' : Signal (Task x ())
@@ -148,6 +147,14 @@ port setRoomName' = Signal.map (\name -> (Signal.send actions.address (SetRoomNa
 port setMe : Signal User
 port setMe' : Signal (Task x ())
 port setMe' = Signal.map (\name -> (Signal.send actions.address (SetMe name))) setMe
+
+
+requestFullScreenMB : Signal.Mailbox String
+requestFullScreenMB = Signal.mailbox ""
+
+port requestFullScreen' : Signal (Task () ())
+port requestFullScreen' = Signal.map VideoControl.requestFullScreen requestFullScreenMB.signal
+
 
 -- Statics
 mediaTypes = ["mic", "video", "screen"]
@@ -273,9 +280,6 @@ startStreamingMB = Signal.mailbox ""
 
 endStreamingMB : Signal.Mailbox String
 endStreamingMB = Signal.mailbox ""
-
-requestFullScreenMB : Signal.Mailbox String
-requestFullScreenMB = Signal.mailbox ""
 
 -- Views(no signals appears here)
 
