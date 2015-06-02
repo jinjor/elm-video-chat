@@ -8,6 +8,8 @@ import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
 
+import Mouse
+
 import String
 import Maybe
 import Set exposing (Set)
@@ -15,6 +17,7 @@ import Dict exposing (Dict)
 import Signal exposing (..)
 
 import Lib.Header as Header
+import Lib.WebSocket as WS
 
 import Debug exposing (log)
 
@@ -64,6 +67,22 @@ fetchRoom roomId = (getRoomInfo roomId)
 
 -- port runner : Signal (Task Http.Error ())
 -- port runner = Signal.map fetchRoom updateRoom
+
+
+port runner : Signal ()
+port websocketRunner : Signal (Task () ())
+port websocketRunner = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") runner
+
+port wssend : Signal String
+port wssend' : Signal (Task () ())
+port wssend' = WS.send <~ wssend
+
+port wsmessage : Signal String
+port wsmessage = WS.message
+
+port wsopened : Signal Bool
+port wsopened = WS.opened
+
 
 port updateRoom : Signal String
 
@@ -423,7 +442,8 @@ chatView c = div [class "col-md-12"] [chatTimeline c.chatMessages, chatInput c]
 main : Signal Html
 main = view <~ context
 
-
+-- main : Signal Html
+-- main = text <~ WS.message
 
 
 

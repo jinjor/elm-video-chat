@@ -14,28 +14,24 @@ function uuid() {
   return uuid;
 }
 function setupWebSocket(room, clientId, onmessage) {
-  var connection = new WebSocket('ws://localhost:9999/ws', ['soap', 'xmpp']);
-
   var send = function(data) {
     data.room = getRoom();
     data.from = clientId;
-    connection.send(JSON.stringify(data));
+    roomSignal.ports.wssend.send(JSON.stringify(data));
   };
-  connection.onopen = function() {
-    console.log('open');
-    var time = new Date().getTime();
-    send({
-      type: 'join',
-      time: time
-    });
-  };
-  connection.onclose = function() {
-    console.log('close');
-  };
-  connection.onmessage = function(e) {
-    var data = JSON.parse(e.data);
+  roomSignal.ports.wsmessage.subscribe(function(str) {
+    var data = JSON.parse(str);
     onmessage(data);
-  };
+  });
+  roomSignal.ports.wsopened.subscribe(function(opened) {
+    if(opened) {
+      var time = new Date().getTime();
+      send({
+        type: 'join',
+        time: time
+      });
+    }
+  });
   return send;
 }
 
@@ -363,7 +359,9 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   leave: "",
   initRoom: "",
   setRoomName: "",
-  setMe: {name: "", email:""}
+  setMe: {name: "", email:""},
+  wssend: "",
+  runner: []
 });
 getInitialInfo(function(initial) {
 
@@ -385,6 +383,7 @@ getInitialInfo(function(initial) {
     if (type === 'update') {
       roomSignal.ports.updateRoom.send(getRoom());
     } else if (type === 'message') {
+
       roomSignal.ports.receiveChat.send(e.message);
     } else if (type === 'join') {
       join(clientId, cm, send, e, function() {
