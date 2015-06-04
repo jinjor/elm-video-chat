@@ -42,16 +42,30 @@ type alias Context = { me: User
 type alias PeerId = String
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
-type alias ChatMessage = { userId: String, message: String }
-
+type alias ChatMessage = (PeerId, String)
+type alias WSMessage = (String, PeerId, String)
 
 port runner : Signal ()
 port websocketRunner : Signal (Task () ())
 port websocketRunner = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") runner
 
-port wssend : Signal String
-port wssend' : Signal (Task () ())
-port wssend' = WS.send <~ wssend
+wsmessage' : Signal WSMessage
+wsmessage' =
+  let f s = case Json.decodeString wsMessageDecoder s of
+    Ok value -> value
+    Err s -> ("","","")
+  in Signal.map f WS.message
+
+chatFilter : WSMessage -> Bool
+chatFilter (type_, _, _) = type_ == "message"
+
+receiveChat : Signal ChatMessage
+receiveChat =
+  let f (_, peerId, data) = (peerId, data)
+  in Signal.map f (Signal.filter chatFilter ("", "", "") wsmessage')
+
+-- port wsmessage : Signal WSMessage
+-- port wsmessage = Signal.filter (\a -> not (chatFilter a)) ("", "", "") wsmessage'
 
 port wsmessage : Signal String
 port wsmessage = WS.message
@@ -59,12 +73,17 @@ port wsmessage = WS.message
 port wsopened : Signal Bool
 port wsopened = WS.opened
 
+port wssend : Signal String
+port wssend' : Signal (Task () ())
+port wssend' = WS.send <~ wssend
+
+
+
 
 port updateRoom : Signal String
 
 port initRoom : Signal String
 
-port receiveChat : Signal ChatMessage
 port updateChat : Signal (Task x ())
 port updateChat = Signal.map (\mes -> (Signal.send actions.address (AddChatMessage mes)) `andThen` (\_ -> Signal.send actions.address (UpdateField ""))) receiveChat
 port sendChat : Signal String
@@ -162,6 +181,13 @@ userOf c peerId = case Dict.get peerId c.users of
   Nothing -> { name="", email="" }
 
 -- Actions
+
+wsMessageDecoder : Json.Decoder WSMessage
+wsMessageDecoder = Json.object3 (,,)
+  ("type" := Json.string)
+  ("from" := Json.string)
+  ("message" := Json.string)
+
 
 type Action
   = NoOp
@@ -297,8 +323,7 @@ view c = div [] [
 
 window : Html -> Html -> Bool -> Html
 window header body local =
-  let face = if | local -> "panel-primary"
-                | otherwise -> "panel-default"
+  let face = if local then "panel-primary" else "panel-default"
   in div [class "col-sm-6 col-md-4"] [
         div [class ("panel " ++ face)] [header, body]
       ]
@@ -322,10 +347,8 @@ madiaButton c mediaType =
       streaming = case Dict.get mediaType c.localVideoUrls of
         Just _ -> True
         Nothing -> False
-      face = if | streaming -> "btn-primary"
-                | otherwise -> "btn-default"
-      address = if | streaming -> endStreamingMB.address
-                   | otherwise -> startStreamingMB.address
+      face = if streaming then "btn-primary" else "btn-default"
+      address = if streaming then endStreamingMB.address else startStreamingMB.address
   in button [
     Html.Attributes.type' "button",
     class ("btn " ++ face),
@@ -399,7 +422,7 @@ mediaWindowView c mediaType title videoUrl local =
   in window (windowHeader title buttons) videoHtml local
 
 messageView : ChatMessage -> Html
-messageView message = li [] [text message.message]
+messageView (_, message) = li [] [text message]
 
 chatTimeline : List ChatMessage -> Html
 chatTimeline messages = ul [class "list-unstyled"] (List.map messageView (List.reverse messages))

@@ -19,9 +19,13 @@ function setupWebSocket(room, clientId, onmessage) {
     data.from = clientId;
     roomSignal.ports.wssend.send(JSON.stringify(data));
   };
-  roomSignal.ports.wsmessage.subscribe(function(str) {
-    var data = JSON.parse(str);
-    onmessage(data);
+  roomSignal.ports.wsmessage.subscribe(function(data) {
+    onmessage(JSON.parse(data));
+    // onmessage({
+    //   type: data[0],
+    //   from: data[1],
+    //   data: data[2]
+    // });
   });
   roomSignal.ports.wsopened.subscribe(function(opened) {
     if(opened) {
@@ -334,10 +338,10 @@ function onMessage(clientId, cm, send, data) {
 //----------
 polyfill();
 var roomSignal = Elm.fullscreen(Elm.Main, {
-  receiveChat: {
-    userId: '',
-    message: ''
-  },
+  // receiveChat: {
+  //   userId: '',
+  //   message: ''
+  // },
   updateRoom: getRoom(),
   addConnection: ["",""],
   removeConnection: ["",""],
