@@ -338,22 +338,17 @@ function onMessage(clientId, cm, send, data) {
 //----------
 polyfill();
 var roomSignal = Elm.fullscreen(Elm.Main, {
-  // receiveChat: {
-  //   userId: '',
-  //   message: ''
-  // },
   updateRoom: getRoom(),
   addConnection: ["",""],
   removeConnection: ["",""],
   setVideoUrl: [["", ""],""],
   setLocalVideoUrl: ["", ""],
-  join: null,
-  leave: "",
   initRoom: "",
   setRoomName: "",
   setMe: {name: "", email:""},
   wssend: "",
-  runner: []
+  runner: [],
+  join: null
 });
 getInitialInfo(function(initial) {
 
@@ -370,24 +365,7 @@ getInitialInfo(function(initial) {
   });
 
   var send = setupWebSocket(room, clientId, function(e) {
-    var type = e.type;
-    // console.log(type);
-    if (type === 'update') {
-      roomSignal.ports.updateRoom.send(getRoom());
-    } else if (type === 'message') {
-
-      roomSignal.ports.receiveChat.send(e.message);
-    } else if (type === 'join') {
-      join(clientId, cm, send, e, function() {
-        roomSignal.ports.join.send([e.from, e.user]);
-      });
-    } else if (type === 'leave') {
-      leave(clientId, cm, send, e, function() {
-        roomSignal.ports.leave.send(e.from);
-      });
-    } else {
-      onMessage(clientId, cm, send, e);
-    }
+    onMessage(clientId, cm, send, e);
   });
   roomSignal.ports.startStreaming.subscribe(function(mediaType) {
     offerSDP(clientId, cm, send, mediaType);

@@ -2,6 +2,7 @@ module Main where
 
 import Http
 import Json.Decode as Json exposing ((:=))
+import Json.Encode
 import Task exposing (..)
 
 import Html exposing (..)
@@ -43,29 +44,49 @@ type alias PeerId = String
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias ChatMessage = (PeerId, String)
-type alias WSMessage = (String, PeerId, String)
+type alias RawWSMessage = (String, PeerId, String)
+type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
+type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
 
 port runner : Signal ()
 port websocketRunner : Signal (Task () ())
 port websocketRunner = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") runner
 
-wsmessage' : Signal WSMessage
-wsmessage' =
-  let f s = case Json.decodeString wsMessageDecoder s of
+rawWsMessage : Signal RawWSMessage
+rawWsMessage =
+  let f s = case (log "raw" <| Json.decodeString wsMessageDecoder s) of
     Ok value -> value
     Err s -> ("","","")
   in Signal.map f WS.message
 
-chatFilter : WSMessage -> Bool
-chatFilter (type_, _, _) = type_ == "message"
 
-receiveChat : Signal ChatMessage
-receiveChat =
-  let f (_, peerId, data) = (peerId, data)
-  in Signal.map f (Signal.filter chatFilter ("", "", "") wsmessage')
+constructedWsMessage : Signal WSMessage
+constructedWsMessage =
+  let f (type_, peerId, data) =
+    let decoder = wsMessageBodyDecoder type_
+      in case decoder of
+        Just d ->
+          case (log "parse" (Json.decodeString d data)) of
+            Ok value -> (type_, peerId, Just value)
+            Err s -> (type_, peerId, Nothing)
+        Nothing -> (type_, peerId, Nothing)
+  in Signal.map f rawWsMessage
 
--- port wsmessage : Signal WSMessage
--- port wsmessage = Signal.filter (\a -> not (chatFilter a)) ("", "", "") wsmessage'
+
+
+port processWS : Signal(Task x ())
+port processWS =
+  let f (type_, peerId, maybe) = case (log "WS" maybe) of
+    Just (WSJoin user) -> Signal.send actions.address (Join peerId user)
+    Just (WSLeave) -> Signal.send actions.address (Leave peerId)
+    Just (WSChatMessage s) -> updateChat (peerId, s)
+    Nothing -> Signal.send actions.address NoOp
+  in Signal.map f constructedWsMessage
+
+
+updateChat : ChatMessage -> Task x ()
+updateChat mes = (Signal.send actions.address (AddChatMessage mes)) `andThen` (\_ -> Signal.send actions.address (UpdateField ""))
+
 
 port wsmessage : Signal String
 port wsmessage = WS.message
@@ -84,8 +105,7 @@ port updateRoom : Signal String
 
 port initRoom : Signal String
 
-port updateChat : Signal (Task x ())
-port updateChat = Signal.map (\mes -> (Signal.send actions.address (AddChatMessage mes)) `andThen` (\_ -> Signal.send actions.address (UpdateField ""))) receiveChat
+
 port sendChat : Signal String
 port sendChat = chatSendMB.signal
 port startStreaming : Signal String
@@ -93,17 +113,7 @@ port startStreaming = startStreamingMB.signal
 port endStreaming : Signal String
 port endStreaming = endStreamingMB.signal
 
-port join : Signal (Maybe (PeerId, User))
-port join' : Signal (Task x ())
-port join' =
-  let f a = case a of
-    Just (peerId, user) -> Join peerId user
-    Nothing -> NoOp
-  in Signal.map (\a -> (Signal.send actions.address (f a))) join
 
-port leave : Signal PeerId
-port leave' : Signal (Task x ())
-port leave' = Signal.map (\peerId -> (Signal.send actions.address (Leave peerId))) leave
 
 port setVideoUrl : Signal (Connection, Maybe String)
 videoUrlList : Signal (Dict Connection String)
@@ -180,15 +190,45 @@ userOf c peerId = case Dict.get peerId c.users of
   Just user -> user
   Nothing -> { name="", email="" }
 
--- Actions
 
-wsMessageDecoder : Json.Decoder WSMessage
-wsMessageDecoder = Json.object3 (,,)
+
+
+
+wsMessageDecoder : Json.Decoder RawWSMessage
+wsMessageDecoder = Json.object3 (\t f d -> (t, f, Json.Encode.encode 0 d))
   ("type" := Json.string)
   ("from" := Json.string)
-  ("message" := Json.string)
+  ("data" := Json.value)
+
+wsMessageBodyDecoder : String -> Maybe (Json.Decoder WsMessageBody)
+wsMessageBodyDecoder type_ = case type_ of
+  "join" -> Just wsMessageJoinDecoder
+  "leave" -> Just wsMessageLeaveDecoder
+  "message" -> Just wsMessageChatMessageDecoder
+  _ -> Nothing
 
 
+wsMessageJoinDecoder : Json.Decoder WsMessageBody
+wsMessageJoinDecoder =
+  let userDecoder = Json.object3 (,,) ("id" := Json.string) ("name" := Json.string) ("email" := Json.string)
+  in Json.object1 (\(id, name, email) -> WSJoin {name= name, email= email}) ("user" := userDecoder)
+
+wsMessageLeaveDecoder : Json.Decoder WsMessageBody
+wsMessageLeaveDecoder = Json.null WSLeave
+
+wsMessageChatMessageDecoder : Json.Decoder WsMessageBody
+wsMessageChatMessageDecoder = Json.object1 (\mes -> WSChatMessage mes) ("message" := Json.string)
+
+-- TODO remove
+port join : Signal (Maybe (PeerId, User))
+port join' : Signal (Task x ())
+port join' =
+  let f a = case a of
+    Just (peerId, user) -> Join peerId user
+    Nothing -> NoOp
+  in Signal.map (\a -> (Signal.send actions.address (f a))) join
+
+-- Actions
 type Action
   = NoOp
   | CloseWindow Connection

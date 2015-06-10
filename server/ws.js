@@ -14,7 +14,9 @@ module.exports = function(socket, storage, session, user) {
         client.send(JSON.stringify({
           from: data.from,
           type: 'join',
-          user: session.users[data.from]
+          data: {
+            user: session.users[data.from]
+          }
         }));
       });
     } else if (data.type === 'message') {
@@ -30,11 +32,13 @@ module.exports = function(socket, storage, session, user) {
       room.addMessage(message);
       room.getClients().forEach(function(client) {
         client.send(JSON.stringify({
+          from: data.from,
           type: 'message',
-          message: message
+          data: {
+            message: message
+          }
         }));
       });
-
     } else if (data.type === 'endStream') {
       var roomId = data.room;
       var room = session.getRoom(roomId);
@@ -42,7 +46,6 @@ module.exports = function(socket, storage, session, user) {
         client.send(JSON.stringify(data));
       });
     }
-
   });
   socket.on('close', function() {
     session.getRooms().forEach(function(room) {
@@ -52,7 +55,8 @@ module.exports = function(socket, storage, session, user) {
         room.getOtherClients(removedId).forEach(function(client) {
           client.send(JSON.stringify({
             from: removedId,
-            type: 'leave'
+            type: 'leave',
+            data: null
           }));
         });
       }

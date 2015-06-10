@@ -23,7 +23,6 @@ Elm.Native.WebSocket.make = function(localRuntime) {
           localRuntime.notify(opened.id, false);
         };
         connection.onmessage = function(e) {
-          console.log(e.data);
           localRuntime.notify(message.id, e.data);
         };
         callback(Task.succeed());
