@@ -335,20 +335,19 @@ function onMessage(clientId, cm, send, data) {
 polyfill();
 var roomSignal = Elm.fullscreen(Elm.Main, {
   updateRoom: getRoom(),
+  websocketRunner: [],
   addConnection: ["",""],
   removeConnection: ["",""],
   setVideoUrl: [["", ""],""],
   setLocalVideoUrl: ["", ""],
-  initRoom: "",
   setRoomName: "",
   setMe: {name: "", email:""},
   wssend: "",
-  runner: [],
   join: null
 });
-getInitialInfo(function(initial) {
+roomSignal.ports.initRoom.subscribe(function(room) {
 
-  var room = initial.room;
+  // var room = initial.room;
   var cm = ceateConnectionManager();
   var clientId = uuid();
 
@@ -356,7 +355,13 @@ getInitialInfo(function(initial) {
   roomSignal.ports.setRoomName.send(room.id);
   room.peers.forEach(function(peerId) {
     // console.log(peerId);
-    var user = room.users[peerId];
+    var users = {};
+    room.users.forEach(function(pair) {
+      var key = pair[0];
+      var value = pair[1];
+      users[key] = value;
+    });
+    var user = users[peerId];
     roomSignal.ports.join.send([peerId, user]);
   });
 

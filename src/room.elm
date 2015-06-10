@@ -24,7 +24,7 @@ import Lib.VideoControl as VideoControl
 import Debug exposing (log)
 
 -- Models
-type alias Room = { id:String, peers: List PeerId, users: Dict PeerId User}
+type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
 type alias User = { name:String, email:String }
 type alias Context = { me: User
                       , roomName:String
@@ -48,9 +48,40 @@ type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
 type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
 
-port runner : Signal ()
-port websocketRunner : Signal (Task () ())
-port websocketRunner = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") runner
+
+nullRoom : Room
+nullRoom = {id="", peers=[], users= []}
+
+
+-- Data access
+
+getRoomInfo : String -> Task Http.Error Room
+getRoomInfo roomId = Http.get roomDecoder (log "url" ("/api/room/" ++ roomId))
+
+roomDecoder : Json.Decoder Room
+roomDecoder =
+  let peer = Json.string
+      user = Json.object2 (\name email -> { name=name, email=email })
+          ("name" := Json.string)
+          ("email" := Json.string)
+  in
+    Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
+      ("id" := Json.string)
+      ("peers" := Json.list peer)
+      ("users" := Json.keyValuePairs user)
+
+fetchRoom : String -> Task Http.Error ()
+fetchRoom roomId = (getRoomInfo roomId)
+    `andThen` (\room -> (Signal.send actions.address (InitRoom room) `andThen` (\_ -> Signal.send initRoomMB.address room)))
+    `onError` (\err -> log "err" (succeed ()))
+
+runner : Signal (Task Http.Error ())
+runner = Signal.map fetchRoom updateRoom
+
+port websocketRunner : Signal ()
+
+websocketRunner' : Signal (Task () ())
+websocketRunner' = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") websocketRunner
 
 rawWsMessage : Signal RawWSMessage
 rawWsMessage =
@@ -110,8 +141,8 @@ port beforeLeave = beforeLeaveMB.signal
 
 port updateRoom : Signal String
 
-port initRoom : Signal String
-
+port initRoom : Signal Room
+port initRoom = initRoomMB.signal
 
 port sendChat : Signal String
 port sendChat = chatSendMB.signal
@@ -268,7 +299,7 @@ update action context =
         { context |
           roomName <- room.id,
           peers <- Set.fromList room.peers,
-          users <- room.users
+          users <- Dict.fromList(room.users)
         }
       SetMe me ->
         { context |
@@ -317,8 +348,8 @@ update action context =
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
 
-initRoomMB : Signal.Mailbox String
-initRoomMB = Signal.mailbox ""
+initRoomMB : Signal.Mailbox Room
+initRoomMB = Signal.mailbox nullRoom
 
 chatSendMB : Signal.Mailbox String
 chatSendMB = Signal.mailbox ""
@@ -334,6 +365,8 @@ beforeJoinMB = Signal.mailbox ""
 
 beforeLeaveMB : Signal.Mailbox String
 beforeLeaveMB = Signal.mailbox ""
+
+
 
 -- Views(no signals appears here)
 
