@@ -20,12 +20,8 @@ function setupWebSocket(room, clientId, onmessage) {
     roomSignal.ports.wssend.send(JSON.stringify(data));
   };
   roomSignal.ports.wsmessage.subscribe(function(data) {
+    console.log(data);
     onmessage(JSON.parse(data));
-    // onmessage({
-    //   type: data[0],
-    //   from: data[1],
-    //   data: data[2]
-    // });
   });
   roomSignal.ports.wsopened.subscribe(function(opened) {
     if(opened) {
@@ -292,21 +288,21 @@ function endStreaming(clientId, cm, send, mediaType) {
   });
 }
 
-function join(clientId, cm, send, e, cb) {
+// connect curent streams to joined peer
+function join(clientId, cm, send, from) {
   ["mic", "video", "screen"].forEach(function(mediaType) {
     var stream = cm.getStream(clientId, mediaType);
     if(stream) {
-      sendOfferToPeer(clientId, cm, send, e.from, stream);
+      sendOfferToPeer(clientId, cm, send, from, stream);
     }
   });
-  cb();
 }
-function leave(clientId, cm, send, e, cb) {
-  cm.removeConnection(e.from);
+// unconnect curent streams to joined peer
+function leave(clientId, cm, send, from) {
+  cm.removeConnection(from);
   ["mic", "video", "screen"].forEach(function(mediaType) {
-    closeRemoteStream(cm, e.from, mediaType);
+    closeRemoteStream(cm, from, mediaType);
   });
-  cb();
 }
 
 function closeRemoteStream(cm, remoteClientId, mediaType) {
@@ -372,6 +368,12 @@ getInitialInfo(function(initial) {
   });
   roomSignal.ports.endStreaming.subscribe(function(mediaType) {
     endStreaming(clientId, cm, send, mediaType);
+  });
+  roomSignal.ports.beforeJoin.subscribe(function(peerId) {
+    join(clientId, cm, send, peerId);
+  });
+  roomSignal.ports.beforeLeave.subscribe(function(peerId) {
+    leave(clientId, cm, send, peerId);
   });
   roomSignal.ports.sendChat.subscribe(function(message) {
     var time = new Date().getTime();

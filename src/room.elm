@@ -77,11 +77,14 @@ constructedWsMessage =
 port processWS : Signal(Task x ())
 port processWS =
   let f (type_, peerId, maybe) = case (log "WS" maybe) of
-    Just (WSJoin user) -> Signal.send actions.address (Join peerId user)
-    Just (WSLeave) -> Signal.send actions.address (Leave peerId)
+    Just (WSJoin user) -> (Signal.send beforeJoinMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Join peerId user))
+    Just (WSLeave) -> (Signal.send beforeLeaveMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Leave peerId))
     Just (WSChatMessage s) -> updateChat (peerId, s)
     Nothing -> Signal.send actions.address NoOp
   in Signal.map f constructedWsMessage
+
+
+
 
 
 updateChat : ChatMessage -> Task x ()
@@ -99,7 +102,11 @@ port wssend' : Signal (Task () ())
 port wssend' = WS.send <~ wssend
 
 
+port beforeJoin : Signal String
+port beforeJoin = beforeJoinMB.signal
 
+port beforeLeave : Signal String
+port beforeLeave = beforeLeaveMB.signal
 
 port updateRoom : Signal String
 
@@ -321,6 +328,12 @@ startStreamingMB = Signal.mailbox ""
 
 endStreamingMB : Signal.Mailbox String
 endStreamingMB = Signal.mailbox ""
+
+beforeJoinMB : Signal.Mailbox String
+beforeJoinMB = Signal.mailbox ""
+
+beforeLeaveMB : Signal.Mailbox String
+beforeLeaveMB = Signal.mailbox ""
 
 -- Views(no signals appears here)
 
