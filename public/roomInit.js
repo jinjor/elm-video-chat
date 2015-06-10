@@ -131,28 +131,7 @@ function ceateConnectionManager() {
 }
 
 
-function getRoomInfo(cb) {
-  getInitialInfo(function(initialData) {
-    cb(initialData.room);
-  })
-}
-
-function getInitialInfo(cb) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/api/room/' + getRoom(), true);
-  xhr.responseType = 'json';
-  xhr.setRequestHeader('Cache-Control', 'no-cache');
-  xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
-  xhr.onload = function(e) {
-    if (this.status == 200) {
-      cb(this.response);
-    }
-  };
-  xhr.send();
-}
-
-
-function offerSDP(clientId, cm, send, mediaType) {
+function offerSDP(clientId, cm, send, mediaType, peers) {
   var mediaOptions = {};
   if(mediaType === 'mic') {
     mediaOptions.audio = true;
@@ -165,12 +144,9 @@ function offerSDP(clientId, cm, send, mediaType) {
     cm.addStream(clientId, mediaType, stream);
     roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
 
-    getRoomInfo(function(room) {
-      var peers = room.peers;
-      peers.forEach(function(peerId) {
-        sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
+    peers.forEach(function(peerId) {
+      sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
 
-        });
       });
     });
 
@@ -256,7 +232,6 @@ function answerSDP(clientId, cm, send, e) {
 }
 
 function acceptAnswer(clientId, cm, send, e) {
-  console.log(e.from);
   var pc = cm.getConnection(e.from);
   pc.setRemoteDescription(
     new RTCSessionDescription(e.data),
@@ -340,19 +315,15 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   removeConnection: ["",""],
   setVideoUrl: [["", ""],""],
   setLocalVideoUrl: ["", ""],
-  setRoomName: "",
-  setMe: {name: "", email:""},
   wssend: "",
   join: null
 });
-roomSignal.ports.initRoom.subscribe(function(room) {
+roomSignal.ports.initRoom.subscribe(function(initial) {
 
-  // var room = initial.room;
+  var room = initial.room;
   var cm = ceateConnectionManager();
   var clientId = uuid();
 
-  roomSignal.ports.setMe.send(initial.user);
-  roomSignal.ports.setRoomName.send(room.id);
   room.peers.forEach(function(peerId) {
     // console.log(peerId);
     var users = {};
@@ -368,10 +339,14 @@ roomSignal.ports.initRoom.subscribe(function(room) {
   var send = setupWebSocket(room, clientId, function(e) {
     onMessage(clientId, cm, send, e);
   });
-  roomSignal.ports.startStreaming.subscribe(function(mediaType) {
-    offerSDP(clientId, cm, send, mediaType);
+  roomSignal.ports.startStreaming.subscribe(function(args) {
+    var mediaType = args[0];
+    var peers = args[1];
+    offerSDP(clientId, cm, send, mediaType, peers);
   });
-  roomSignal.ports.endStreaming.subscribe(function(mediaType) {
+  roomSignal.ports.endStreaming.subscribe(function(args) {
+    var mediaType = args[0];
+    var peers = args[1];
     endStreaming(clientId, cm, send, mediaType);
   });
   roomSignal.ports.beforeJoin.subscribe(function(peerId) {

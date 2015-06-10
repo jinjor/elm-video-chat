@@ -24,6 +24,7 @@ import Lib.VideoControl as VideoControl
 import Debug exposing (log)
 
 -- Models
+type alias InitialData = { room: Room, user: User }
 type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
 type alias User = { name:String, email:String }
 type alias Context = { me: User
@@ -49,39 +50,51 @@ type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
 type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
 
 
-nullRoom : Room
-nullRoom = {id="", peers=[], users= []}
+nullInitialData : InitialData
+nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}}
 
 
 -- Data access
 
-getRoomInfo : String -> Task Http.Error Room
-getRoomInfo roomId = Http.get roomDecoder (log "url" ("/api/room/" ++ roomId))
+nocacheGet : Json.Decoder value -> String -> Task Http.Error value
+nocacheGet decoder url =
+  let request = {
+      verb = "GET"
+      , headers = [("Cache-Control", "no-cache"), ("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT")]
+      , url = url
+      , body = Http.empty
+    }
+  in Http.fromJson decoder (Http.send Http.defaultSettings request)
 
-roomDecoder : Json.Decoder Room
-roomDecoder =
+getInitialData : String -> Task Http.Error InitialData
+getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
+
+initialDataDecoder : Json.Decoder InitialData
+initialDataDecoder =
   let peer = Json.string
       user = Json.object2 (\name email -> { name=name, email=email })
           ("name" := Json.string)
           ("email" := Json.string)
-  in
-    Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
-      ("id" := Json.string)
-      ("peers" := Json.list peer)
-      ("users" := Json.keyValuePairs user)
+      room = Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
+          ("id" := Json.string)
+          ("peers" := Json.list peer)
+          ("users" := Json.keyValuePairs user)
+  in Json.object2 (\user room -> { user=user, room=room })
+      ("user" := user)
+      ("room" := room)
 
 fetchRoom : String -> Task Http.Error ()
-fetchRoom roomId = (getRoomInfo roomId)
-    `andThen` (\room -> (Signal.send actions.address (InitRoom room) `andThen` (\_ -> Signal.send initRoomMB.address room)))
+fetchRoom roomId = (getInitialData roomId)
+    `andThen` (\initial -> (Signal.send actions.address (InitRoom (log "initial" initial)) `andThen` (\_ -> Signal.send initRoomMB.address initial)))
     `onError` (\err -> log "err" (succeed ()))
 
-runner : Signal (Task Http.Error ())
-runner = Signal.map fetchRoom updateRoom
+port runner : Signal (Task Http.Error ())
+port runner = Signal.map fetchRoom updateRoom
 
 port websocketRunner : Signal ()
 
-websocketRunner' : Signal (Task () ())
-websocketRunner' = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") websocketRunner
+port websocketRunner' : Signal (Task () ())
+port websocketRunner' = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") websocketRunner
 
 rawWsMessage : Signal RawWSMessage
 rawWsMessage =
@@ -141,14 +154,14 @@ port beforeLeave = beforeLeaveMB.signal
 
 port updateRoom : Signal String
 
-port initRoom : Signal Room
+port initRoom : Signal InitialData
 port initRoom = initRoomMB.signal
 
 port sendChat : Signal String
 port sendChat = chatSendMB.signal
-port startStreaming : Signal String
+port startStreaming : Signal (String, List PeerId)
 port startStreaming = startStreamingMB.signal
-port endStreaming : Signal String
+port endStreaming : Signal (String, List PeerId)
 port endStreaming = endStreamingMB.signal
 
 
@@ -181,14 +194,6 @@ port addConnection' = Signal.map (\conn -> (Signal.send actions.address (AddConn
 port removeConnection : Signal Connection
 port removeConnection' : Signal (Task x ())
 port removeConnection' = Signal.map (\conn -> (Signal.send actions.address (RemoveConnection conn))) removeConnection
-
-port setRoomName : Signal String
-port setRoomName' : Signal (Task x ())
-port setRoomName' = Signal.map (\name -> (Signal.send actions.address (SetRoomName name))) setRoomName
-
-port setMe : Signal User
-port setMe' : Signal (Task x ())
-port setMe' = Signal.map (\name -> (Signal.send actions.address (SetMe name))) setMe
 
 
 requestFullScreenMB : Signal.Mailbox String
@@ -270,9 +275,7 @@ port join' =
 type Action
   = NoOp
   | CloseWindow Connection
-  | InitRoom Room
-  | SetMe User
-  | SetRoomName String
+  | InitRoom InitialData
   | RemovePeer String
   | AddConnection Connection
   | RemoveConnection Connection
@@ -291,19 +294,12 @@ update action context =
         { context |
           connections <- Set.remove target context.connections
         }
-      SetRoomName roomName ->
+      InitRoom initial ->
         { context |
-          roomName <- roomName
-        }
-      InitRoom room ->
-        { context |
-          roomName <- room.id,
-          peers <- Set.fromList room.peers,
-          users <- Dict.fromList(room.users)
-        }
-      SetMe me ->
-        { context |
-          me <- me
+          roomName <- initial.room.id,
+          peers <- Set.fromList initial.room.peers,
+          users <- Dict.fromList(initial.room.users),
+          me <- initial.user
         }
       RemovePeer target ->
         { context |
@@ -348,17 +344,17 @@ update action context =
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
 
-initRoomMB : Signal.Mailbox Room
-initRoomMB = Signal.mailbox nullRoom
+initRoomMB : Signal.Mailbox InitialData
+initRoomMB = Signal.mailbox nullInitialData
 
 chatSendMB : Signal.Mailbox String
 chatSendMB = Signal.mailbox ""
 
-startStreamingMB : Signal.Mailbox String
-startStreamingMB = Signal.mailbox ""
+startStreamingMB : Signal.Mailbox (String, List PeerId)
+startStreamingMB = Signal.mailbox ("", [])
 
-endStreamingMB : Signal.Mailbox String
-endStreamingMB = Signal.mailbox ""
+endStreamingMB : Signal.Mailbox (String, List PeerId)
+endStreamingMB = Signal.mailbox ("", [])
 
 beforeJoinMB : Signal.Mailbox String
 beforeJoinMB = Signal.mailbox ""
@@ -382,14 +378,20 @@ is13 code =
 
 
 fullscreenButton : String -> Html
-fullscreenButton videoURL = div [class "btn pull-right", onClick requestFullScreenMB.address videoURL] [
-    div [class "glyphicon glyphicon-fullscreen"] []
-  ]
+fullscreenButton videoURL = div [
+      class "btn pull-right",
+      onClick requestFullScreenMB.address videoURL
+    ] [
+      div [class "glyphicon glyphicon-fullscreen"] []
+    ]
 
-windowCloseButton : String -> Html
-windowCloseButton mediaType = div [class "btn pull-right", onClick endStreamingMB.address mediaType] [
-    div [class "glyphicon glyphicon-remove"] []
-  ]
+windowCloseButton : Context -> String -> Html
+windowCloseButton c mediaType = div [
+      class "btn pull-right",
+      onClick endStreamingMB.address (mediaType, (Set.toList c.peers))
+    ] [
+      div [class "glyphicon glyphicon-remove"] []
+    ]
 
 windowHeader : String -> List Html -> Html
 windowHeader title buttons =
@@ -435,10 +437,11 @@ madiaButton c mediaType =
         Nothing -> False
       face = if streaming then "btn-primary" else "btn-default"
       address = if streaming then endStreamingMB.address else startStreamingMB.address
+      peers = Set.toList c.peers
   in button [
     Html.Attributes.type' "button",
     class ("btn " ++ face),
-    onClick address mediaType
+    onClick address (mediaType, peers)
   ] [madiaIcon mediaType]
 
 madiaButtons : Signal.Address Action -> Context -> Html
@@ -503,7 +506,7 @@ mediaWindowView c mediaType title videoUrl local =
             src videoUrl,
             Html.Attributes.attribute "autoplay" ""
           ] []
-      buttons = if | local -> [windowCloseButton mediaType, fullscreenButton videoUrl]
+      buttons = if | local -> [windowCloseButton c mediaType, fullscreenButton videoUrl]
                    | otherwise -> [fullscreenButton videoUrl]
   in window (windowHeader title buttons) videoHtml local
 
