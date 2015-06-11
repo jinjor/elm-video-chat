@@ -1,6 +1,5 @@
 module Main where
 
-import Http
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
 import Task exposing (..)
@@ -15,6 +14,7 @@ import Set exposing (Set)
 import Dict exposing (Dict)
 import Signal exposing (..)
 
+import Lib.API exposing (..)
 import Lib.Header as Header
 import Lib.WebSocket as WS
 import Lib.VideoControl as VideoControl
@@ -22,9 +22,7 @@ import Lib.VideoControl as VideoControl
 import Debug exposing (log)
 
 -- Models
-type alias InitialData = { room: Room, user: User }
-type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
-type alias User = { name:String, email:String }
+
 type alias Context = { me: User
                       , roomName:String
                       , address: Signal.Address Action
@@ -39,7 +37,6 @@ type alias Context = { me: User
                       , localAudio: Bool
                       , localScreen: Bool }
 
-type alias PeerId = String
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias ChatMessage = (PeerId, String)
@@ -51,42 +48,14 @@ type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
 nullInitialData : InitialData
 nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}}
 
-
 -- Data access
 
-nocacheGet : Json.Decoder value -> String -> Task Http.Error value
-nocacheGet decoder url =
-  let request = {
-      verb = "GET"
-      , headers = [("Cache-Control", "no-cache"), ("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT")]
-      , url = url
-      , body = Http.empty
-    }
-  in Http.fromJson decoder (Http.send Http.defaultSettings request)
-
-getInitialData : String -> Task Http.Error InitialData
-getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
-
-initialDataDecoder : Json.Decoder InitialData
-initialDataDecoder =
-  let peer = Json.string
-      user = Json.object2 (\name email -> { name=name, email=email })
-          ("name" := Json.string)
-          ("email" := Json.string)
-      room = Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
-          ("id" := Json.string)
-          ("peers" := Json.list peer)
-          ("users" := Json.keyValuePairs user)
-  in Json.object2 (\user room -> { user=user, room=room })
-      ("user" := user)
-      ("room" := room)
-
-fetchRoom : String -> Task Http.Error ()
+fetchRoom : String -> Task err ()
 fetchRoom roomId = (getInitialData roomId)
     `andThen` (\initial -> (Signal.send actions.address (InitRoom (log "initial" initial)) `andThen` (\_ -> Signal.send initRoomMB.address initial)))
     `onError` (\err -> log "err" (succeed ()))
 
-port runner : Signal (Task Http.Error ())
+port runner : Signal (Task err ())
 port runner = Signal.map fetchRoom updateRoom
 
 port websocketRunner : Signal ()
@@ -124,9 +93,6 @@ port processWS =
     Just (WSChatMessage s) -> updateChat (peerId, s)
     Nothing -> Signal.send actions.address NoOp
   in Signal.map f constructedWsMessage
-
-
-
 
 
 updateChat : ChatMessage -> Task x ()
@@ -230,8 +196,6 @@ userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.users of
   Just user -> user
   Nothing -> { name="", email="" }
-
-
 
 
 
