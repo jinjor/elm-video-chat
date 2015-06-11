@@ -3,3 +3,24 @@ video {
 	max-width: 100%;
 	height: auto;
 }
+.room-name {
+	font-family: "Trebuchet MS", Helvetica, sans-serif;
+	font-weight: bold;
+}
+.status-panel h2 {
+	margin-top: 10px;
+	margin-bottom: 15px;
+}
+.form-inline .form-group > * {
+  margin:5px 3px;
+}
+.user-list {
+	margin-top: 5px;
+}
+.user-list li {
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+.user-list .fa {
+  margin-right: 5px;
+}

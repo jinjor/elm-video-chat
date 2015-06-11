@@ -251,7 +251,11 @@ function endStreaming(clientId, cm, send, mediaType) {
   roomSignal.ports.setLocalVideoUrl.send([mediaType, null]);
   var stream = cm.getStream(clientId, mediaType);
   cm.getAllConnections().forEach(function(pc) {
-    pc.removeStream(stream);
+    try {
+      pc.removeStream(stream);
+    } catch(e) {
+      console.error(e);
+    }
     pc.close();
   });
   cm.removeStream(clientId, mediaType);

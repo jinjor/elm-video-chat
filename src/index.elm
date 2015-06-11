@@ -49,9 +49,11 @@ actions = Signal.mailbox NoOp
 view : Address Action -> Context -> Html
 view address c = div [] [
     Header.header { user=c.me },
-    -- h2 [] [text "Rooms"],
-    ul [class "list-unstyled clearfix col-md-12"] (roomViews c),
-    createRoomView address c
+    div [ class "container" ] [
+      -- h2 [] [text "Rooms"],
+      ul [class "list-unstyled clearfix col-md-12"] (roomViews c),
+      createRoomView address c
+    ]
   ]
 
 createRoomView : Address Action -> Context -> Html
@@ -64,7 +66,7 @@ createRoomView address c =
           on "input" targetValue (Signal.message address << UpdateRoomName)
         ] []
       ]
-      submit_ = input [ type' "submit", class "btn btn-default", value "Create" ] []
+      submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
       form_ = Html.form [class "form-inline", action ("/room/" ++ encodeURI(c.roomName)), method "GET"] [input_, submit_]
   in div [] [form_]
 
@@ -81,7 +83,7 @@ roomView room =
       users = List.map (\peerId -> userOf usersDict peerId) room.peers
       header = div [class "panel-heading"] [
           a [href ("/room/" ++ room.id)] [
-            div [class "panel-title"] [ text room.id ]
+            div [class "room-name panel-title"] [ text room.id ]
           ]
         ]
       body = div [class "panel-body"] [

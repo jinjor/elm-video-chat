@@ -370,7 +370,7 @@ window header body local =
         div [class ("panel " ++ face)] [header, body]
       ]
 
-roomTitle c = h2 [] [text c.roomName]
+roomTitle c = h2 [ class "room-name" ] [text c.roomName]
 
 madiaIcon : String -> Html
 madiaIcon mediaType =
@@ -399,7 +399,9 @@ madiaButton c mediaType =
   ] [madiaIcon mediaType]
 
 madiaButtons : Signal.Address Action -> Context -> Html
-madiaButtons address c = div [ Html.Attributes.attribute "role" "group", class "btn-group"] (List.map (madiaButton c) mediaTypes)
+madiaButtons address c = div [
+    Html.Attributes.attribute "role" "group", class "btn-group"
+  ] (List.map (madiaButton c) mediaTypes)
 
 peerView : Signal.Address Action -> Context -> PeerId -> Html
 peerView address c peer =
@@ -413,11 +415,13 @@ peerView address c peer =
   ]
 
 peerViews : Signal.Address Action -> Context -> List PeerId -> Html
-peerViews address c peers = ul [class "list-unstyled hidden-xs"] (List.map (\peer -> peerView address c peer) peers)
+peerViews address c peers = ul [
+    class "user-list list-unstyled hidden-xs"
+  ] (List.map (\peer -> peerView address c peer) peers)
 
 statusView : Context -> Html
 statusView c = div [class "col-sm-3 col-md-3"] [
-    div [class "row panel panel-default"] [
+    div [class "status-panel row panel panel-default"] [
       div [class "panel-body"] [
         roomTitle c,
         madiaButtons c.address c,
