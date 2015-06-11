@@ -12,31 +12,32 @@ import Dict exposing (Dict)
 
 import Lib.API exposing (..)
 
-type alias Context = { roomName : String, rooms: List Room }
+type alias Context = { roomName : String, rooms: List Room, me: User }
 
 --- Model
 initialContext : Context
-initialContext = { roomName = "", rooms = [] }
+initialContext = { roomName = "", rooms = [], me= { name="", email="" } }
 
 context : Signal Context
 context = Signal.foldp update initialContext actions.signal
 
 port fetchRoom : Task Http.Error ()
 port fetchRoom = getRooms
-      `andThen` (\rooms -> (Signal.send actions.address (Init rooms)))
+      `andThen` (\initData -> (Signal.send actions.address (Init initData)))
       `onError` (\err -> log "err" (succeed ()))
 
 --- Action
 type Action
   = NoOp
-  | Init (List Room)
+  | Init InitialRoomsData
   | UpdateRoomName String
 
 update : Action -> Context -> Context
 update action context =
     case action of
-      Init rooms -> { context |
-        rooms <- rooms
+      Init initData -> { context |
+        me <- initData.user,
+        rooms <- initData.rooms
       }
       UpdateRoomName roomName -> { context |
         roomName <- roomName
@@ -47,7 +48,7 @@ actions = Signal.mailbox NoOp
 --- View
 view : Address Action -> Context -> Html
 view address c = div [] [
-    Header.header {user= {name="ore"}},
+    Header.header { user=c.me },
     -- h2 [] [text "Rooms"],
     ul [class "list-unstyled clearfix col-md-12"] (roomViews c),
     createRoomView address c

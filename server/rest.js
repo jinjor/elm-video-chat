@@ -31,19 +31,26 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     }
   });
   app.get('/api/rooms', function(req, res) {
-    var rooms = session.getRooms();
-    res.send(rooms.map(function(room) {
-      return {
-        id: room.id,
-        peers: room.getClientIds().map(function(clientId) {
-          return {
-            id: clientId,
-            name: clientId.substring(0, 7),
-            mail: 'foo@bar'
-          };
-        })
-      };
-    }));
+    storage.getUser(req.session.user).then(function(user) {
+      var rooms = session.getRooms();
+      var _rooms = rooms.map(function(room) {
+        var users = {};
+        var clientIds = room.getClientIds();
+        clientIds.forEach(function(clientId) {
+          users[clientId] = session.users[clientId];
+        });
+        return {
+          id: room.id,
+          peers: clientIds,
+          users: users
+        };
+      });
+      res.send({
+        rooms: _rooms,
+        user: user
+      });
+    });
+
   });
 
 

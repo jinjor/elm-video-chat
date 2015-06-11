@@ -15,6 +15,7 @@ import Debug exposing (log)
 
 -- Models
 type alias InitialData = { room: Room, user: User }
+type alias InitialRoomsData = { rooms: List Room, user: User }
 type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
 type alias User = { name:String, email:String }
 type alias PeerId = String
@@ -34,8 +35,8 @@ nocacheGet decoder url =
 getInitialData : String -> Task Http.Error InitialData
 getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
 
-getRooms : Task Http.Error (List Room)
-getRooms = nocacheGet (Json.list roomDecoder) "/api/rooms"
+getRooms : Task Http.Error InitialRoomsData
+getRooms = nocacheGet initialRoomsDataDecoder "/api/rooms"
 
 
 initialDataDecoder : Json.Decoder InitialData
@@ -43,8 +44,13 @@ initialDataDecoder = Json.object2 (\user room -> { user=user, room=room })
       ("user" := userDecoder)
       ("room" := roomDecoder)
 
+initialRoomsDataDecoder : Json.Decoder InitialRoomsData
+initialRoomsDataDecoder =
+  let rooms = Json.list roomDecoder
+  in Json.object2 (\user rooms -> { user=user, rooms=rooms })
+    ("user" := userDecoder)
+    ("rooms" := rooms)
 
-----------------
 
 userDecoder : Json.Decoder User
 userDecoder = Json.object2 (\name email -> { name=name, email=email })
