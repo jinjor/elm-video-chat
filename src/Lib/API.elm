@@ -34,28 +34,30 @@ nocacheGet decoder url =
 getInitialData : String -> Task Http.Error InitialData
 getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
 
+getRooms : Task Http.Error (List Room)
+getRooms = nocacheGet (Json.list roomDecoder) "/api/rooms"
+
+
 initialDataDecoder : Json.Decoder InitialData
-initialDataDecoder =
+initialDataDecoder = Json.object2 (\user room -> { user=user, room=room })
+      ("user" := userDecoder)
+      ("room" := roomDecoder)
+
+
+----------------
+
+userDecoder : Json.Decoder User
+userDecoder = Json.object2 (\name email -> { name=name, email=email })
+        ("name" := Json.string)
+        ("email" := Json.string)
+
+roomDecoder : Json.Decoder Room
+roomDecoder =
   let peer = Json.string
-      user = Json.object2 (\name email -> { name=name, email=email })
-          ("name" := Json.string)
-          ("email" := Json.string)
-      room = Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
-          ("id" := Json.string)
-          ("peers" := Json.list peer)
-          ("users" := Json.keyValuePairs user)
-  in Json.object2 (\user room -> { user=user, room=room })
-      ("user" := user)
-      ("room" := room)
-
-
-
-
-
-
-
-
-
+  in Json.object3 (\id peers users -> { id=id, peers=peers, users=users })
+      ("id" := Json.string)
+      ("peers" := Json.list peer)
+      ("users" := Json.keyValuePairs userDecoder)
 
 
 

@@ -8,9 +8,10 @@ import Task exposing (..)
 import Debug exposing (log)
 import Lib.Header as Header
 import Lib.URI exposing(encodeURI, decodeURI)
+import Dict exposing (Dict)
 
-type alias Room = { id:String, peers: List Peer}
-type alias Peer = { id:String, name:String, mail:String }
+import Lib.API exposing (..)
+
 type alias Context = { roomName : String, rooms: List Room }
 
 --- Model
@@ -19,23 +20,6 @@ initialContext = { roomName = "", rooms = [] }
 
 context : Signal Context
 context = Signal.foldp update initialContext actions.signal
-
-
-getRooms : Task Http.Error (List Room)
-getRooms = Http.get (Json.list roomDecoder) "/api/rooms"
-
-
-roomDecoder : Json.Decoder Room
-roomDecoder =
-  let peer =
-        Json.object3 (\id name mail -> { id=id, name=name, mail=mail })
-          ("id" := Json.string)
-          ("name" := Json.string)
-          ("mail" := Json.string)
-  in
-    Json.object2 (\id peers -> { id=id, peers=peers })
-      ("id" := Json.string)
-      ("peers" := Json.list peer)
 
 port fetchRoom : Task Http.Error ()
 port fetchRoom = getRooms
@@ -69,7 +53,7 @@ view address c = div [] [
     createRoomView address c
   ]
 
-createRoomView : Address Action -> Context ->Html
+createRoomView : Address Action -> Context -> Html
 createRoomView address c =
   let input_ = div [class "form-group"] [
         label [] [text "New Room"],
@@ -85,19 +69,28 @@ createRoomView address c =
 
 roomViews c = List.map roomView c.rooms
 
+userOf : Dict PeerId User -> PeerId -> User
+userOf d peerId = case Dict.get peerId d of
+  Just user -> user
+  Nothing -> { name="", email="" }
+
+roomView : Room -> Html
 roomView room =
-  let header = div [class "panel-heading"] [
+  let usersDict = Dict.fromList room.users
+      users = List.map (\peerId -> userOf usersDict peerId) room.peers
+      header = div [class "panel-heading"] [
           a [href ("/room/" ++ room.id)] [
             div [class "panel-title"] [ text room.id ]
           ]
         ]
       body = div [class "panel-body"] [
-        ul [class "list-unstyled"] (List.map peerView room.peers)
+        ul [class "list-unstyled"] (List.map peerView users)
       ]
   in li [class "col-md-3 pull-left"] [
         div [class "panel panel-default"] [header, body]
       ]
 
+peerView : User -> Html
 peerView peer = li [] [text peer.name]
 
 
