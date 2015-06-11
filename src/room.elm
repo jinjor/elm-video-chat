@@ -9,8 +9,6 @@ import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
 
-import Mouse
-
 import String
 import Maybe
 import Set exposing (Set)
@@ -262,14 +260,6 @@ wsMessageLeaveDecoder = Json.null WSLeave
 wsMessageChatMessageDecoder : Json.Decoder WsMessageBody
 wsMessageChatMessageDecoder = Json.object1 (\mes -> WSChatMessage mes) ("message" := Json.string)
 
--- TODO remove
-port join : Signal (Maybe (PeerId, User))
-port join' : Signal (Task x ())
-port join' =
-  let f a = case a of
-    Just (peerId, user) -> Join peerId user
-    Nothing -> NoOp
-  in Signal.map (\a -> (Signal.send actions.address (f a))) join
 
 -- Actions
 type Action
