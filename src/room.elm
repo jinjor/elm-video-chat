@@ -61,7 +61,7 @@ port runner = Signal.map fetchRoom updateRoom
 port websocketRunner : Signal ()
 
 port websocketRunner' : Signal (Task () ())
-port websocketRunner' = Signal.map (\_ -> WS.connect "ws://localhost:9999/ws") websocketRunner
+port websocketRunner' = Signal.map (\_ -> WS.connect "wss://localhost:9999/ws") websocketRunner
 
 rawWsMessage : Signal RawWSMessage
 rawWsMessage =
@@ -399,7 +399,9 @@ madiaButton c mediaType =
   ] [madiaIcon mediaType]
 
 madiaButtons : Signal.Address Action -> Context -> Html
-madiaButtons address c = div [ Html.Attributes.attribute "role" "group", class "btn-group"] (List.map (madiaButton c) mediaTypes)
+madiaButtons address c = div [
+    Html.Attributes.attribute "role" "group", class "btn-group"
+  ] (List.map (madiaButton c) mediaTypes)
 
 peerView : Signal.Address Action -> Context -> PeerId -> Html
 peerView address c peer =

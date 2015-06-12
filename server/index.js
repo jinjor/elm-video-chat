@@ -1,4 +1,4 @@
-var http = require('http');
+var https = require('https');
 var sockjs = require('sockjs');
 var express = require('express');
 var session = require('express-session');
@@ -56,13 +56,21 @@ app.use(staticRouter);
 // setup REST
 rest(app, staticRouter, storage, globalSession);
 
-var server = http.createServer(app);
+var server = https.createServer({
+  key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+  cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+}, app);
 
 // setup websocket
 var WebSocketServer = require('ws').Server;
 var wss = new WebSocketServer({
-  path: "/ws",
-  port: 9999
+  server: https.createServer({
+    key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+    cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+  }, function(req, res) {
+    res.writeHead(200);
+  }).listen(9999),
+  path: "/ws"
 });
 
 wss.on('connection', function(socket) {

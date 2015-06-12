@@ -135,22 +135,32 @@ function offerSDP(clientId, cm, send, mediaType, peers) {
   var mediaOptions = {};
   if(mediaType === 'mic') {
     mediaOptions.audio = true;
+    f(mediaOptions);
   } else if(mediaType === 'video') {
     mediaOptions.video = true;
+    f(mediaOptions);
   } else if(mediaType === 'screen') {
+    getScreenId(function (error, sourceId, mediaOptions) {
+      if(!error) {
+        f(mediaOptions);
+      }
+    });
   }
 
-  navigator.getUserMedia(mediaOptions, function(stream) {
-    cm.addStream(clientId, mediaType, stream);
-    roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
+  function f(mediaOptions) {
+    navigator.getUserMedia(mediaOptions, function(stream) {
+      cm.addStream(clientId, mediaType, stream);
+      roomSignal.ports.setLocalVideoUrl.send([mediaType, URL.createObjectURL(stream)]);
 
-    peers.forEach(function(peerId) {
-      sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
+      peers.forEach(function(peerId) {
+        sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
 
+        });
       });
-    });
+    }, onerror);
+  }
 
-  }, onerror);
+
 
 }
 
