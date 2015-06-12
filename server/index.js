@@ -19,7 +19,7 @@ var app = express();
 var sessionHandler = session({
   name: 'elm-video-chat',
   secret: 'secret',
-  cookie: { secure: false }
+  cookie: { secure: true }
 });
 app.use(sessionHandler);
 app.use(bodyParser());
@@ -69,17 +69,21 @@ var wss = new WebSocketServer({
     cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
   }, function(req, res) {
     res.writeHead(200);
+    res.end();
+    console.log('yey');
   }).listen(9999),
   path: "/ws"
 });
 
 wss.on('connection', function(socket) {
+  console.log('conn');
   var request = socket.upgradeReq;
   var response = {writeHead: {}};
   sessionHandler(request, response, function (err) {
     var email = request.session.user;
     storage.getUser(email).then(function(user) {
       if (!authenticate(user)) {
+        console.log('auth failed');
         conn.end();
         return;
       }

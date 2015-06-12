@@ -17,6 +17,7 @@ function setupWebSocket(room, clientId, onmessage) {
   var send = function(data) {
     data.room = getRoom();
     data.from = clientId;
+    // conosle.log(data);
     roomSignal.ports.wssend.send(JSON.stringify(data));
   };
   roomSignal.ports.wsmessage.subscribe(function(data) {
@@ -332,6 +333,7 @@ var roomSignal = Elm.fullscreen(Elm.Main, {
   wssend: ""
 });
 roomSignal.ports.initRoom.subscribe(function(initial) {
+  console.log('initRoom')
 
   var room = initial.room;
   var cm = ceateConnectionManager();
@@ -364,4 +366,8 @@ roomSignal.ports.initRoom.subscribe(function(initial) {
       message: message
     });
   });
+  send({
+    type: 'join',
+    from: clientId
+  })
 });

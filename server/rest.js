@@ -14,6 +14,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       storage.getUser(req.session.user).then(function(user) {
         var users = {};
         var clientIds = room.getClientIds();
+        // console.log(clientIds);
         clientIds.forEach(function(clientId) {
           users[clientId] = session.users[clientId];
         });

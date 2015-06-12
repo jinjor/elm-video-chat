@@ -31,6 +31,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
 
     var send = function(s) {
       return Task.asyncFunction(function(callback) {
+        console.log('send:' + s);
         if(connection) {
           connection.send(s);
           callback(Task.succeed());
