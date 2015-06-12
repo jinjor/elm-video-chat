@@ -18,9 +18,9 @@ import Lib.API exposing (..)
 import Lib.Header as Header
 import Lib.WebSocket as WS
 import Lib.VideoControl as VideoControl
+import Lib.ChatView exposing (..)
 
 import Debug exposing (log)
-
 -- Models
 
 type alias Context = { me: User
@@ -39,7 +39,6 @@ type alias Context = { me: User
 
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
-type alias ChatMessage = (PeerId, String)
 type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
 type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
@@ -320,16 +319,6 @@ beforeLeaveMB = Signal.mailbox ""
 
 -- Views(no signals appears here)
 
-onEnter : Signal.Address a -> a -> Attribute
-onEnter address value =
-    on "keydown"
-      (Json.customDecoder keyCode is13)
-      (\_ -> Signal.message address value)
-
-is13 : Int -> Result String ()
-is13 code =
-  if code == 13 then Ok () else Err "not the right key code"
-
 
 fullscreenButton : String -> Html
 fullscreenButton videoURL = div [
@@ -354,19 +343,21 @@ windowHeader title buttons =
 
 ----------------
 view : Context -> Html
-view c = div [] [
+view c =
+  let inputAddress = forwardTo c.address (\field -> UpdateField field)
+  in div [] [
     Header.header {user= {name=c.me.name}},
     div [class "container"] [
       statusView c,
-      mainView c
-      -- chatView c
+      mainView c,
+      chatView c.chatMessages inputAddress chatSendMB.address c.chatField
     ]
   ]
 
 window : Html -> Html -> Bool -> Html
 window header body local =
   let face = if local then "panel-primary" else "panel-default"
-  in div [class "col-sm-6 col-md-4"] [
+  in div [class "col-sm-6 col-md-6"] [
         div [class ("panel " ++ face)] [header, body]
       ]
 
@@ -415,7 +406,9 @@ peerView address c peer =
   ]
 
 peerViews : Signal.Address Action -> Context -> List PeerId -> Html
-peerViews address c peers = ul [class "list-unstyled hidden-xs"] (List.map (\peer -> peerView address c peer) peers)
+peerViews address c peers = ul [
+    class "list-unstyled hidden-xs"
+  ] (List.map (\peer -> peerView address c peer) peers)
 
 statusView : Context -> Html
 statusView c = div [class "col-sm-3 col-md-3"] [
@@ -466,21 +459,6 @@ mediaWindowView c mediaType title videoUrl local =
                    | otherwise -> [fullscreenButton videoUrl]
   in window (windowHeader title buttons) videoHtml local
 
-messageView : ChatMessage -> Html
-messageView (_, message) = li [] [text message]
-
-chatTimeline : List ChatMessage -> Html
-chatTimeline messages = ul [class "list-unstyled"] (List.map messageView (List.reverse messages))
-
-chatInput : Context -> Html
-chatInput c = input [
-  Html.Attributes.value c.chatField,
-    on "input" targetValue (Signal.message c.address << UpdateField),
-    onEnter chatSendMB.address c.chatField
-  ] []
-
-chatView : Context -> Html
-chatView c = div [class "col-md-12"] [chatTimeline c.chatMessages, chatInput c]
 
 -- Main
 main : Signal Html
