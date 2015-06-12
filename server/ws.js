@@ -23,11 +23,6 @@ module.exports = function(socket, storage, session, user) {
       var roomId = data.room;
       var message = data.message;
       var room = session.getRoom(roomId);
-      //TODO getUserFromCookie
-      var message = {
-        userId: '',
-        message: message
-      };
 
       room.addMessage(message);
       room.getClients().forEach(function(client) {
