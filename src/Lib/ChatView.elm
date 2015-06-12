@@ -15,11 +15,11 @@ import Debug exposing (log)
 type alias Name = String
 type alias ChatMessage = (Name, String)
 
-onEnter : Signal.Address a -> a -> Attribute
-onEnter address value =
+onEnter : Signal.Address () -> Attribute
+onEnter address =
     on "keydown"
       (Json.customDecoder keyCode is13)
-      (\_ -> Signal.message address value)
+      (\_ -> Signal.message address ())
 
 is13 : Int -> Result String ()
 is13 code =
@@ -39,7 +39,7 @@ chatInput : Address String -> Address String -> String -> Html
 chatInput inputAddress sendAddress chatField = input [
   Html.Attributes.value chatField,
     on "input" targetValue (Signal.message inputAddress),
-    onEnter sendAddress chatField
+    onEnter (forwardTo sendAddress (\_ -> chatField))
   ] []
 
 chatView : List ChatMessage -> Address String -> Address String -> String -> Html

@@ -389,8 +389,8 @@ madiaButton c mediaType =
     onClick address (mediaType, peers)
   ] [madiaIcon mediaType]
 
-madiaButtons : Signal.Address Action -> Context -> Html
-madiaButtons address c = div [
+mediaButtons : Signal.Address Action -> Context -> Html
+mediaButtons address c = div [
     Html.Attributes.attribute "role" "group", class "btn-group"
   ] (List.map (madiaButton c) mediaTypes)
 
@@ -415,7 +415,7 @@ statusView c = div [class "col-sm-3 col-md-3"] [
     div [class "row panel panel-default"] [
       div [class "panel-body"] [
         roomTitle c,
-        madiaButtons c.address c,
+        mediaButtons c.address c,
         peerViews c.address c (Set.toList c.peers)
       ]
     ]
