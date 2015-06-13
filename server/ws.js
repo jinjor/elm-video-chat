@@ -3,7 +3,7 @@ module.exports = function(socket, storage, session, user) {
 
   socket.on('message', function(s) {
     var data = JSON.parse(s);
-    console.log(data);
+    // console.log(data);
     if (data.type === 'join') {
       var room = session.getRoom(data.room);
       if (!room) {

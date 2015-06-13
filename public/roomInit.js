@@ -141,8 +141,16 @@ function offerSDP(clientId, cm, send, mediaType, peers) {
     mediaOptions.video = true;
     f(mediaOptions);
   } else if(mediaType === 'screen') {
+
     getScreenId(function (error, sourceId, mediaOptions) {
-      if(!error) {
+      console.log(error)
+      if(error === 'not-installed') {
+        alert('Screen Capturing is not installed.');
+        return;
+      }else if(error === 'installed-disabled') {
+        alert('Screen Capturing is installed but disabled.');
+        return;
+      } else {
         f(mediaOptions);
       }
     });

@@ -76,7 +76,6 @@ var wss = new WebSocketServer({
 });
 
 wss.on('connection', function(socket) {
-  console.log('conn');
   var request = socket.upgradeReq;
   var response = {writeHead: {}};
   sessionHandler(request, response, function (err) {
