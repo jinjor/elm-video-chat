@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
 
+import Time exposing (Time)
 import String
 import Maybe
 import Set exposing (Set)
@@ -41,7 +42,7 @@ type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
-type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String
+type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String Time
 
 
 nullInitialData : InitialData
@@ -89,7 +90,7 @@ port processWS =
   let f (type_, peerId, maybe) = case (log "WS" maybe) of
     Just (WSJoin user) -> (Signal.send beforeJoinMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Join peerId user))
     Just (WSLeave) -> (Signal.send beforeLeaveMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Leave peerId))
-    Just (WSChatMessage s) -> updateChat (peerId, s)
+    Just (WSChatMessage s t) -> updateChat (peerId, s, t)
     Nothing -> Signal.send actions.address NoOp
   in Signal.map f constructedWsMessage
 
@@ -221,8 +222,9 @@ wsMessageLeaveDecoder : Json.Decoder WsMessageBody
 wsMessageLeaveDecoder = Json.null WSLeave
 
 wsMessageChatMessageDecoder : Json.Decoder WsMessageBody
-wsMessageChatMessageDecoder = Json.object1 (\mes -> WSChatMessage mes) ("message" := Json.string)
-
+wsMessageChatMessageDecoder = Json.object2 (\mes time -> WSChatMessage mes time)
+  ("message" := Json.string)
+  ("time" := Json.float)
 
 -- Actions
 type Action

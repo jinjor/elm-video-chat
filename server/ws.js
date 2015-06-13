@@ -22,7 +22,8 @@ module.exports = function(socket, storage, session, user) {
       });
     } else if (data.type === 'message') {
       var roomId = data.room;
-      var message = data.message;
+      var message = data.data.message;
+      var time = data.data.time;
       var room = session.getRoom(roomId);
 
       room.addMessage(message);
@@ -31,7 +32,8 @@ module.exports = function(socket, storage, session, user) {
           from: data.from,
           type: 'message',
           data: {
-            message: message
+            message: message,
+            time: time
           }
         }));
       });

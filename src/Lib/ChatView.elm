@@ -9,11 +9,12 @@ import Html.Events exposing (..)
 import Signal exposing (..)
 
 import Debug exposing (log)
+import Time exposing (Time)
 
 -- Models
 
 type alias Name = String
-type alias ChatMessage = (Name, String)
+type alias ChatMessage = (Name, String, Time)
 
 onEnter : Signal.Address () -> Attribute
 onEnter address =
@@ -27,13 +28,23 @@ is13 code =
 
 
 -- Views(no signals appears here)
-messageView : ChatMessage -> Html
-messageView (_, message) = li [] [text message]
+messageView : ChatMessage -> Bool -> Html
+messageView (name, message, time) self =
+  let avator = img [src "", class "avator"] []
+      name_ = div [class "chat-name"] [text name]
+      message_ = div [class "message"] []
+      hour_ = toString <| Time.inHours time
+      minute_ = toString <| Time.inMinutes time
+      time_ = div [class "time"] [text <| hour_ ++ ":" ++ minute_]
+      clazz = if self then "chat chat-self" else "chat"
+  in li [class clazz] [avator, name_, message_, time_]
 
 chatTimeline : List ChatMessage -> Html
-chatTimeline messages = ul [
+chatTimeline messages =
+  let isSelf (name, _, _) = name == ""
+  in ul [
     class "list-unstyled"
-  ] (List.map messageView (List.reverse messages))
+  ] (List.map (\mes -> messageView mes (isSelf mes)) (List.reverse messages))
 
 chatInput : Address String -> Address String -> String -> Html
 chatInput inputAddress sendAddress chatField = input [

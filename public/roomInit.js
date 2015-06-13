@@ -143,7 +143,6 @@ function offerSDP(clientId, cm, send, mediaType, peers) {
   } else if(mediaType === 'screen') {
 
     getScreenId(function (error, sourceId, mediaOptions) {
-      console.log(error)
       if(error === 'not-installed') {
         alert('Screen Capturing is not installed.');
         return;
@@ -369,13 +368,16 @@ roomSignal.ports.initRoom.subscribe(function(initial) {
   roomSignal.ports.sendChat.subscribe(function(message) {
     var time = new Date().getTime();
     send({
+      from: clientId,
       type: 'message',
-      time: time,
-      message: message
+      data: {
+        time: time,
+        message: message
+      }
     });
   });
   send({
-    type: 'join',
-    from: clientId
+    from: clientId,
+    type: 'join'
   })
 });
