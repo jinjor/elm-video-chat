@@ -8,6 +8,7 @@ import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
 
+import Date exposing (Date)
 import Time exposing (Time)
 import String
 import Maybe
@@ -31,13 +32,14 @@ type alias Context = { me: User
                       , users: Dict PeerId User
                       , connections: Set Connection
                       , chatField: String
-                      , chatMessages: List ChatMessage
+                      , chatMessages: List ChatMessage'
                       , videoUrls: Dict Connection String
                       , localVideoUrls: Dict String String
                       , localVideo: Bool
                       , localAudio: Bool
                       , localScreen: Bool }
 
+type alias ChatMessage' = (PeerId, String, Date)
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias RawWSMessage = (String, PeerId, String)
@@ -90,12 +92,12 @@ port processWS =
   let f (type_, peerId, maybe) = case (log "WS" maybe) of
     Just (WSJoin user) -> (Signal.send beforeJoinMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Join peerId user))
     Just (WSLeave) -> (Signal.send beforeLeaveMB.address peerId) `andThen` (\_ -> Signal.send actions.address (Leave peerId))
-    Just (WSChatMessage s t) -> updateChat (peerId, s, t)
+    Just (WSChatMessage s t) -> updateChat (peerId, s, Date.fromTime t)
     Nothing -> Signal.send actions.address NoOp
   in Signal.map f constructedWsMessage
 
 
-updateChat : ChatMessage -> Task x ()
+updateChat : ChatMessage' -> Task x ()
 updateChat mes = (Signal.send actions.address (AddChatMessage mes)) `andThen` (\_ -> Signal.send actions.address (UpdateField ""))
 
 
@@ -235,7 +237,7 @@ type Action
   | AddConnection Connection
   | RemoveConnection Connection
   | UpdateField String
-  | AddChatMessage ChatMessage
+  | AddChatMessage ChatMessage'
   | UpdateVideoUrls (Dict Connection String)
   | UpdateLocalVideoUrls (Dict String String)
   | Join PeerId User
@@ -347,12 +349,13 @@ windowHeader title buttons =
 view : Context -> Html
 view c =
   let inputAddress = forwardTo c.address (\field -> UpdateField field)
+      chatMessages = List.map (\(peer, mes, date) -> ((userOf c peer).name, mes, date, (userOf c peer).email == c.me.email)) c.chatMessages
   in div [] [
     Header.header {user= {name=c.me.name}},
     div [class "container"] [
       statusView c,
       mainView c,
-      chatView c.chatMessages inputAddress chatSendMB.address c.chatField
+      chatView chatMessages inputAddress chatSendMB.address c.chatField
     ]
   ]
 

@@ -24,3 +24,50 @@ video {
 .user-list .fa {
   margin-right: 5px;
 }
+.chat-view-container {
+	position: fixed;
+	bottom: 0;
+  right: 0;
+  left: 0;
+}
+.chat-view {
+	float: right;
+	margin-bottom: 0;
+}
+.chat {
+	position: relative;
+}
+.chat.chat-self {
+	text-align: right;
+}
+.chat .chat-name {
+  position: relative;
+  left: 0;
+}
+.chat .chat-message {
+	width: 75%;
+  border: solid 1px #aaa;
+  border-radius: 4px;
+  padding: 2px;
+  position: relative;
+	top: 0;
+  left: 0;
+	display: inline-block;
+	text-align: left;
+}
+.chat.chat-self .chat-message {
+	background-color: #ae9;
+  left: inherit;
+	right: 0;
+}
+.chat .chat-time {
+	position: absolute;
+  bottom: 0;
+  right: -40px;
+}
+.chat.chat-self .chat-time {
+	position: absolute;
+  bottom: 0;
+  left: -40px;
+	right: inherit;
+}
