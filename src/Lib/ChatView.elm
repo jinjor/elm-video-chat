@@ -19,7 +19,7 @@ type alias Name = String
 type alias ChatMessage = (Name, String, Date, Bool)
 type ChatViewEvent = ChatOpen | ChatClose | ChatUpdateField String | ChatSend String
 
-onEnter : Signal.Address () -> Attribute
+onEnter : Address () -> Attribute
 onEnter address =
     on "keydown"
       (Json.customDecoder keyCode is13)
