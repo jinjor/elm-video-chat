@@ -7,8 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "elm-make src/index.elm --output public/index.js && elm-make src/room.elm --output public/room.js",
     "start": "npm run build && node server/index",
-    "prewatch": "npm run build",
-    "watch": "gulp watch"
+    "watch": "npm run build & gulp watch"
   },
   "author": "",
   "license": "ISC",

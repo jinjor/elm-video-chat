@@ -21,18 +21,42 @@ video {
 	padding-top: 2px;
 	padding-bottom: 2px;
 }
-.user-list .fa {
-  margin-right: 5px;
+:not(.btn) > .fa {
+  margin-right: 0.5em;
 }
 .chat-view-container {
 	position: fixed;
 	bottom: 0;
   right: 0;
   left: 0;
+	/*height: 50%;*/
 }
 .chat-view {
+	/*position: absolute;
+	bottom: 0;
+  right: 0;*/
 	float: right;
 	margin-bottom: 0;
+}
+.chat-view.opened {
+	top: 0;
+}
+.chat-view .panel-heading {
+	cursor: pointer;
+}
+@keyframes blink {
+	0% { background-color: #eb4; }
+  50% { background-color: #eb4; }
+	51% { background-color: inherit; }
+	100% { background-color: inherit; }
+}
+.chat-view .panel-heading.noread {
+	animation: blink 0.4s 2;
+	background-color: #eb4;
+}
+.chat-view .panel-body {
+	overflow-y: scroll;
+	height: 300px;
 }
 .chat {
 	position: relative;

@@ -37,7 +37,9 @@ type alias Context = { me: User
                       , localVideoUrls: Dict String String
                       , localVideo: Bool
                       , localAudio: Bool
-                      , localScreen: Bool }
+                      , localScreen: Bool
+                      , chatOpened: Bool
+                      , noReadCount: Int}
 
 type alias ChatMessage' = (PeerId, String, Date)
 type alias MediaType = String
@@ -124,12 +126,17 @@ port initRoom : Signal InitialData
 port initRoom = initRoomMB.signal
 
 port sendChat : Signal String
-port sendChat = chatSendMB.signal
+port sendChat =
+  let f action = case action of
+    SendChat mes -> Just mes
+    _ -> Nothing
+  in Signal.filterMap f "" actions.signal
+
+
 port startStreaming : Signal (String, List PeerId)
 port startStreaming = startStreamingMB.signal
 port endStreaming : Signal (String, List PeerId)
 port endStreaming = endStreamingMB.signal
-
 
 
 port setVideoUrl : Signal (Connection, Maybe String)
@@ -177,6 +184,15 @@ mediaTypes = ["mic", "video", "screen"]
 connection : String -> String -> Connection
 connection peer mediaType =(peer, mediaType)
 
+
+
+actionSignal : Signal Action
+actionSignal =
+  let f action = case action of
+    SendChat _ -> False
+    _ -> True
+  in Signal.filter f NoOp actions.signal
+
 context : Signal Context
 context =
   let initial = { roomName = "　"
@@ -191,8 +207,10 @@ context =
                   , localVideoUrls = Dict.empty
                   , localVideo = False
                   , localAudio = False
-                  , localScreen = False}
-  in Signal.foldp update initial actions.signal
+                  , localScreen = False
+                  , chatOpened = False
+                  , noReadCount = 0}
+  in Signal.foldp update initial actionSignal
 
 userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.users of
@@ -242,6 +260,8 @@ type Action
   | UpdateLocalVideoUrls (Dict String String)
   | Join PeerId User
   | Leave PeerId
+  | SendChat String
+  | ToggleChatView Bool
 
 update : Action -> Context -> Context
 update action context =
@@ -276,7 +296,8 @@ update action context =
         }
       AddChatMessage mes ->
         { context |
-          chatMessages <- mes :: context.chatMessages
+          chatMessages <- mes :: context.chatMessages,
+          noReadCount <- if context.chatOpened then 0 else context.noReadCount + 1
         }
       UpdateVideoUrls videoUrls ->
         { context |
@@ -296,7 +317,11 @@ update action context =
           peers <- Set.remove peerId context.peers,
           users <- Dict.remove peerId context.users
         }
-
+      ToggleChatView opened ->
+        { context |
+          chatOpened <- opened,
+          noReadCount <- if opened then 0 else context.noReadCount
+        }
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
@@ -304,8 +329,6 @@ actions = Signal.mailbox NoOp
 initRoomMB : Signal.Mailbox InitialData
 initRoomMB = Signal.mailbox nullInitialData
 
-chatSendMB : Signal.Mailbox String
-chatSendMB = Signal.mailbox ""
 
 startStreamingMB : Signal.Mailbox (String, List PeerId)
 startStreamingMB = Signal.mailbox ("", [])
@@ -346,16 +369,22 @@ windowHeader title buttons =
   in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
 ----------------
+
 view : Context -> Html
 view c =
-  let inputAddress = forwardTo c.address (\field -> UpdateField field)
+  let f e = case e of
+        ChatOpen -> ToggleChatView True
+        ChatClose -> ToggleChatView False
+        ChatUpdateField field -> UpdateField field
+        ChatSend field -> SendChat field
+      address = forwardTo c.address f
       chatMessages = List.map (\(peer, mes, date) -> ((userOf c peer).name, mes, date, (userOf c peer).email == c.me.email)) c.chatMessages
   in div [] [
     Header.header {user= {name=c.me.name}},
     div [class "container"] [
       statusView c,
       mainView c,
-      chatView chatMessages inputAddress chatSendMB.address c.chatField
+      chatView chatMessages address c.chatField c.chatOpened c.noReadCount
     ]
   ]
 

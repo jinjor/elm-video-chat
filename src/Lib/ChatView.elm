@@ -17,6 +17,7 @@ import Lib.PanelHeader exposing (..)
 
 type alias Name = String
 type alias ChatMessage = (Name, String, Date, Bool)
+type ChatViewEvent = ChatOpen | ChatClose | ChatUpdateField String | ChatSend String
 
 onEnter : Signal.Address () -> Attribute
 onEnter address =
@@ -47,27 +48,52 @@ chatTimeline messages =
     class "list-unstyled"
   ] (List.map (\mes -> messageView mes) (List.reverse messages))
 
-chatInput : Address String -> Address String -> String -> Html
-chatInput inputAddress sendAddress chatField = input [
-  Html.Attributes.value chatField,
-    on "input" targetValue (Signal.message inputAddress),
-    onEnter (forwardTo sendAddress (\_ -> chatField))
+chatInput : Address ChatViewEvent -> String -> Html
+chatInput address chatField = input [
+    class "form-control",
+    Html.Attributes.value chatField,
+    on "input" targetValue (Signal.message address << ChatUpdateField),
+    onEnter (forwardTo address (\_ -> ChatSend chatField))
   ] []
 
-chatView : List ChatMessage -> Address String -> Address String -> String -> Html
-chatView chatMessages inputAddress sendAddress chatField =
-  div [class "chat-view-container container"] [
-    div [
-      class "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6"
-    ] [
-      div [class "panel-heading row"] [text "Chat"],
-      div [class "panel-body"] [
-        chatTimeline chatMessages
-      ],
-      div [class "row"] [
-        chatInput inputAddress sendAddress chatField
-      ]
+openedView : List ChatMessage -> Address ChatViewEvent -> String -> List Html
+openedView chatMessages address chatField =
+  [
+    div [class "panel-heading row", onClick address ChatClose] [
+      span [class "fa fa-comments"] [],
+      text <| "Chat"
+    ],
+    div [class "panel-body"] [
+      chatTimeline chatMessages
+    ],
+    div [class "row"] [
+      chatInput address chatField
     ]
+  ]
+
+closedView : Int -> Address ChatViewEvent -> List Html
+closedView noReadCount address =
+  let noreadClass = if noReadCount > 0 then " noread" else ""
+  in [
+    div [
+      class <| "panel-heading row" ++ noreadClass,
+      onClick address ChatOpen
+    ] [
+      span [class "fa fa-comments"] [],
+      text <| "Chat(" ++ (toString noReadCount) ++ ")"
+    ]
+  ]
+
+
+chatView : List ChatMessage -> Address ChatViewEvent -> String -> Bool -> Int -> Html
+chatView chatMessages address chatField opened noReadCount =
+  let inner = if | opened    -> openedView chatMessages address chatField
+                 | otherwise -> closedView noReadCount address
+      openedClass = if opened then " opened" else ""
+  in div [class "chat-view-container container"] [
+    div [
+      class <| "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6" ++ openedClass
+    ] inner
   ]
 
 
