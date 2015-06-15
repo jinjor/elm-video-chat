@@ -23,7 +23,10 @@ import Lib.VideoControl as VideoControl
 import Lib.ChatView as ChatView
 
 import Debug exposing (log)
+
+
 -- Models
+
 type alias Context = { me: User
                       , roomName:String
                       , address: Signal.Address Action
@@ -41,6 +44,20 @@ type alias Connection = (PeerId, MediaType)
 type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
 type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String Time
+
+initialContext : Context
+initialContext = { roomName = "　"
+  , me = {name="", email=""}
+  , address = actions.address
+  , peers = Set.empty
+  , users = Dict.empty
+  , connections = Set.empty
+  , videoUrls = Dict.empty
+  , localVideoUrls = Dict.empty
+  , localVideo = False
+  , localAudio = False
+  , localScreen = False
+  , chat = ChatView.init }
 
 
 nullInitialData : API.InitialData
@@ -198,20 +215,7 @@ updateActionSignal =
   in Signal.filter f NoOp actionSignal
 
 context : Signal Context
-context =
-  let initial = { roomName = "　"
-                  , me = {name="", email=""}
-                  , address = actions.address
-                  , peers = Set.empty
-                  , users = Dict.empty
-                  , connections = Set.empty
-                  , videoUrls = Dict.empty
-                  , localVideoUrls = Dict.empty
-                  , localVideo = False
-                  , localAudio = False
-                  , localScreen = False
-                  , chat = ChatView.init }
-  in Signal.foldp update initial updateActionSignal
+context = Signal.foldp update initialContext updateActionSignal
 
 userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.users of
