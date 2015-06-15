@@ -261,11 +261,16 @@ update action context =
           connections <- Set.remove target context.connections
         }
       InitRoom initial ->
-        { context |
+        let chat = context.chat
+            newChat = { chat |
+              myName <- initial.user.name
+            }
+        in { context |
           roomName <- initial.room.id,
           peers <- Set.fromList initial.room.peers,
           users <- Dict.fromList(initial.room.users),
-          me <- initial.user
+          me <- initial.user,
+          chat <- newChat
         }
       RemovePeer target ->
         { context |
