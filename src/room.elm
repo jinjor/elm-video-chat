@@ -20,7 +20,7 @@ import Lib.API exposing (..)
 import Lib.Header as Header
 import Lib.WebSocket as WS
 import Lib.VideoControl as VideoControl
-import Lib.ChatView exposing (..)
+import Lib.ChatView as ChatView
 
 import Debug exposing (log)
 -- Models
@@ -31,17 +31,12 @@ type alias Context = { me: User
                       , peers: Set PeerId
                       , users: Dict PeerId User
                       , connections: Set Connection
-                      , chatField: String
-                      , chatMessages: List ChatMessage'
                       , videoUrls: Dict Connection String
                       , localVideoUrls: Dict String String
                       , localVideo: Bool
                       , localAudio: Bool
                       , localScreen: Bool
-                      , chatOpened: Bool
-                      , noReadCount: Int}
-
-type alias ChatMessage' = (PeerId, String, Date)
+                      , chat: ChatView.Model}
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias RawWSMessage = (String, PeerId, String)
@@ -99,8 +94,8 @@ port processWS =
   in Signal.map f constructedWsMessage
 
 
-updateChat : ChatMessage' -> Task x ()
-updateChat mes = (Signal.send actions.address (AddChatMessage mes)) `andThen` (\_ -> Signal.send actions.address (UpdateField ""))
+updateChat : ChatView.ChatMessage -> Task x ()
+updateChat mes = (Signal.send actions.address (ChatViewAction (ChatView.AddMessage mes))) `andThen` (\_ -> Signal.send actions.address (ChatViewAction (ChatView.UpdateField "")))
 
 
 port wsmessage : Signal String
@@ -128,7 +123,7 @@ port initRoom = initRoomMB.signal
 port sendChat : Signal String
 port sendChat =
   let f action = case action of
-    SendChat mes -> Just mes
+    ChatViewAction (ChatView.Send mes) -> Just mes
     _ -> Nothing
   in Signal.filterMap f "" actions.signal
 
@@ -189,7 +184,7 @@ connection peer mediaType =(peer, mediaType)
 actionSignal : Signal Action
 actionSignal =
   let f action = case action of
-    SendChat _ -> False
+    ChatViewAction (ChatView.Send _) -> False
     _ -> True
   in Signal.filter f NoOp actions.signal
 
@@ -201,15 +196,12 @@ context =
                   , peers = Set.empty
                   , users = Dict.empty
                   , connections = Set.empty
-                  , chatMessages = []
-                  , chatField = ""
                   , videoUrls = Dict.empty
                   , localVideoUrls = Dict.empty
                   , localVideo = False
                   , localAudio = False
                   , localScreen = False
-                  , chatOpened = False
-                  , noReadCount = 0}
+                  , chat = ChatView.init }
   in Signal.foldp update initial actionSignal
 
 userOf : Context -> PeerId -> User
@@ -254,14 +246,11 @@ type Action
   | RemovePeer String
   | AddConnection Connection
   | RemoveConnection Connection
-  | UpdateField String
-  | AddChatMessage ChatMessage'
   | UpdateVideoUrls (Dict Connection String)
   | UpdateLocalVideoUrls (Dict String String)
   | Join PeerId User
   | Leave PeerId
-  | SendChat String
-  | ToggleChatView Bool
+  | ChatViewAction ChatView.Action
 
 update : Action -> Context -> Context
 update action context =
@@ -290,15 +279,6 @@ update action context =
         { context |
           connections <- Set.remove conn context.connections
         }
-      UpdateField input ->
-        { context |
-          chatField <- input
-        }
-      AddChatMessage mes ->
-        { context |
-          chatMessages <- mes :: context.chatMessages,
-          noReadCount <- if context.chatOpened then 0 else context.noReadCount + 1
-        }
       UpdateVideoUrls videoUrls ->
         { context |
           videoUrls <- videoUrls
@@ -317,10 +297,9 @@ update action context =
           peers <- Set.remove peerId context.peers,
           users <- Dict.remove peerId context.users
         }
-      ToggleChatView opened ->
+      ChatViewAction action ->
         { context |
-          chatOpened <- opened,
-          noReadCount <- if opened then 0 else context.noReadCount
+          chat <- ChatView.update action context.chat
         }
 
 actions : Signal.Mailbox Action
@@ -372,19 +351,12 @@ windowHeader title buttons =
 
 view : Context -> Html
 view c =
-  let f e = case e of
-        ChatOpen -> ToggleChatView True
-        ChatClose -> ToggleChatView False
-        ChatUpdateField field -> UpdateField field
-        ChatSend field -> SendChat field
-      address = forwardTo c.address f
-      chatMessages = List.map (\(peer, mes, date) -> ((userOf c peer).name, mes, date, (userOf c peer).email == c.me.email)) c.chatMessages
-  in div [] [
+  div [] [
     Header.header {user= {name=c.me.name}},
     div [class "container"] [
       statusView c,
       mainView c,
-      chatView chatMessages address c.chatField c.chatOpened c.noReadCount
+      ChatView.view (forwardTo c.address ChatViewAction) c.chat
     ]
   ]
 
