@@ -257,7 +257,10 @@ function endStreaming(clientId, cm, send, mediaType) {
   send({
     type: 'endStream',
     to: clientId,
-    mediaType: mediaType
+    mediaType: mediaType,
+    data: {
+      mediaType: mediaType
+    }
   });
 }
 
