@@ -72,7 +72,9 @@ Elm.Native.WebSocket.make = function(localRuntime) {
   var _closeRemoteStream = function(from, dataString) {
     var data = JSON.parse(dataString);
     return Task.asyncFunction(function(callback) {
-      closeRemoteStream(cm, from, mediaType);
+      closeRemoteStream(cm, from, mediaType, function onRemoteVideoURL(from, mediaType, url) {
+        localRuntime.notify(onRemoteVideoURL.id, [[from, mediaType], url]);
+      });
       callback(Task.succeed());
     });
   };
@@ -103,7 +105,9 @@ Elm.Native.WebSocket.make = function(localRuntime) {
   var beforeLeave = function(peerId) {
     var data = JSON.parse(dataString);
     return Task.asyncFunction(function(callback) {
-      leave(clientId, cm, send, peerId);
+      leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
+        localRuntime.notify(onRemoteVideoURL.id, [[from, mediaType], url]);
+      });
       callback(Task.succeed());
     });
   };
@@ -117,7 +121,11 @@ Elm.Native.WebSocket.make = function(localRuntime) {
     endStreaming: endStreaming,
     beforeJoin: beforeJoin,
     beforeLeave: beforeLeave,
-    requests: requests
+    requests: requests,
+    onLocalVideoURL: onLocalVideoURL,
+    onRemoteVideoURL: onRemoteVideoURL,
+    onAddConnetion: onAddConnetion,
+    onRemoveConnetion: onRemoveConnetion,
   };
 };
 
@@ -336,14 +344,14 @@ function join(clientId, cm, send, from) {
   });
 }
 // unconnect curent streams to joined peer
-function leave(clientId, cm, send, from) {
+function leave(clientId, cm, send, from, onRemoteVideoURL) {
   cm.removeConnection(from);
   ["mic", "video", "screen"].forEach(function(mediaType) {
-    closeRemoteStream(cm, from, mediaType);
+    closeRemoteStream(cm, from, mediaType, onRemoteVideoURL);
   });
 }
 
-function closeRemoteStream(cm, remoteClientId, mediaType) {
+function closeRemoteStream(cm, remoteClientId, mediaType, onRemoteVideoURL) {
   var pc = cm.getConnection(remoteClientId);
   var stream = cm.getStream(remoteClientId, mediaType);
   if(stream) {
@@ -352,22 +360,8 @@ function closeRemoteStream(cm, remoteClientId, mediaType) {
   }
   pc.close();
   cm.removeConnection(remoteClientId);
-  roomSignal.ports.setVideoUrl.send([[remoteClientId, mediaType], null]);
+  onRemoteVideoURL(remoteClientId, mediaType, null);
 }
-
-function onMessage(clientId, cm, send, data) {
-  if (data.type === 'offerSDP') {
-    answerSDP(clientId, cm, send, data);
-  } else if (data.type === 'answerSDP') {
-    acceptAnswer(clientId, cm, send, data);
-  } else if (data.type === 'offerCandidate') {
-    addCandidate(clientId, cm, send, data);
-  } else if (data.type === 'answerCandidate') {
-    addCandidate(clientId, cm, send, data);
-  } else if (data.type === 'endStream') {
-    closeRemoteStream(cm, data.from, data.mediaType);
-  }
-};
 function uuid() {
   var uuid = "", i, random;
   for (i = 0; i < 32; i++) {
