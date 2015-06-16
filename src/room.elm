@@ -19,7 +19,7 @@ import Signal exposing (..)
 import Lib.API as API exposing (PeerId, User)
 import Lib.Header as Header
 import Lib.WebSocket as WS
--- import Lib.WebRTC as WebRTC
+import Lib.WebRTC as WebRTC
 import Lib.VideoControl as VideoControl
 import Lib.ChatView as ChatView
 
@@ -112,25 +112,18 @@ constructedWsMessage =
 port wsmessage : Signal String
 port wsmessage = WS.message
 
+
+rtcMessage : Signal WebRTC.Action
+rtcMessage = WebRTC.actions WS.message
+
+port replay : Signal (Task () ())
+port replay = WebRTC.replay rtcMessage
+
+
+
 port wssend : Signal String
 port wssend' : Signal (Task () ())
 port wssend' = WS.send <~ wssend
-
-
-port beforeJoin : Signal String
-port beforeJoin =
-  let f action = case action of
-    (WSAction (type_, peerId, Just (WSJoin user))) -> Just peerId
-    _ -> Nothing
-  in Signal.filterMap f "" actionSignal
-
-
-port beforeLeave : Signal String
-port beforeLeave =
-  let f action = case action of
-    (WSAction (type_, peerId, Just WSLeave)) -> Just peerId
-    _ -> Nothing
-  in Signal.filterMap f "" actionSignal
 
 
 port sendChat : Signal String
@@ -141,21 +134,51 @@ port sendChat =
   in Signal.filterMap f "" actionSignal
 
 
-port startStreaming : Signal (String, List PeerId)
-port startStreaming =
+
+-- port beforeJoin : Signal String
+-- port beforeJoin =
+--   let f action = case action of
+--     (WSAction (type_, peerId, Just (WSJoin user))) -> Just peerId
+--     _ -> Nothing
+--   in Signal.filterMap f "" actionSignal
+--
+--
+-- port beforeLeave : Signal String
+-- port beforeLeave =
+--   let f action = case action of
+--     (WSAction (type_, peerId, Just WSLeave)) -> Just peerId
+--     _ -> Nothing
+--   in Signal.filterMap f "" actionSignal
+
+--
+-- port startStreaming : Signal (String, List PeerId)
+-- port startStreaming =
+--   let f action = case action of
+--     StartStreaming a -> Just a
+--     _ -> Nothing
+--   in Signal.filterMap f ("", []) actionSignal
+
+
+-- port endStreaming : Signal (String, List PeerId)
+-- port endStreaming =
+--   let f action = case action of
+--     EndStreaming a -> Just a
+--     _ -> Nothing
+--   in Signal.filterMap f ("", []) actionSignal
+
+
+port runRTC : Signal (Task () ())
+port runRTC =
   let f action = case action of
-    StartStreaming a -> Just a
-    _ -> Nothing
-  in Signal.filterMap f ("", []) actionSignal
+    StartStreaming (mediaType, peers) -> WebRTC.startStreaming mediaType peers
+    EndStreaming (mediaType, peers) -> WebRTC.endStreaming mediaType
+    WSAction (type_, peerId, Just (WSJoin user)) -> WebRTC.beforeJoin peerId
+    WSAction (type_, peerId, Just WSLeave) -> WebRTC.beforeLeave peerId
+    _ -> Task.succeed ()
+  in Signal.map f actionSignal
 
-
-
-port endStreaming : Signal (String, List PeerId)
-port endStreaming =
-  let f action = case action of
-    EndStreaming a -> Just a
-    _ -> Nothing
-  in Signal.filterMap f ("", []) actionSignal
+port runRTC' : Signal (Task () ())
+port runRTC' = Signal.map WS.send WebRTC.requests
 
 port requestFullScreen : Signal (Task () ())
 port requestFullScreen =
@@ -167,7 +190,9 @@ port requestFullScreen =
 
 -- input
 
-port setVideoUrl : Signal (Connection, Maybe String)
+-- port setVideoUrl : Signal (Connection, Maybe String)
+
+setVideoUrl = WebRTC.onRemoteVideoURL
 videoUrlList' : Signal (Dict Connection String)
 videoUrlList' =
   let f (conn, maybeUrl) dict = case maybeUrl of
@@ -175,17 +200,21 @@ videoUrlList' =
     Nothing -> Dict.remove conn dict
   in foldp f Dict.empty setVideoUrl
 
-port setLocalVideoUrl : Signal (String, Maybe String)
+-- port setLocalVideoUrl : Signal (String, Maybe String)
+
+setLocalVideoUrl : Signal (String, Maybe String)
+setLocalVideoUrl = WebRTC.onLocalVideoURL
 localVideoUrlList' : Signal (Dict String String)
 localVideoUrlList' =
-  let f (mediaType, maybeUrl) dict = case maybeUrl of
+  let f (mediaType, maybeUrl) dict = case log "maybeUrl" maybeUrl of
     Just url -> Dict.insert mediaType url dict
     Nothing -> Dict.remove mediaType dict
   in foldp f Dict.empty setLocalVideoUrl
 
-port addConnection : Signal Connection
-port removeConnection : Signal Connection
-
+-- port addConnection : Signal Connection
+-- port removeConnection : Signal Connection
+addConnection = WebRTC.onAddConnection
+removeConnection = WebRTC.onRemoveConnection
 
 -- Signals
 

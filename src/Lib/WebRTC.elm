@@ -11,6 +11,7 @@ import Dict exposing (Dict)
 import Signal exposing (..)
 
 import Debug exposing (log)
+import Native.WebRTC
 
 -- Models
 type alias MediaType = String
@@ -74,12 +75,11 @@ onLocalVideoURL = Native.WebRTC.onLocalVideoURL
 onRemoteVideoURL : Signal (Connection, Maybe String)
 onRemoteVideoURL = Native.WebRTC.onRemoteVideoURL
 
-onAddConnetion : Signal Connection
-onAddConnetion = Native.WebRTC.onAddConnetion
+onAddConnection : Signal Connection
+onAddConnection = Native.WebRTC.onAddConnection
 
-onRemoveConnetion : Signal Connection
-onRemoveConnetion = Native.WebRTC.onRemoveConnetion
-
+onRemoveConnection : Signal Connection
+onRemoveConnection = Native.WebRTC.onRemoveConnection
 
 --
 
@@ -97,10 +97,10 @@ closeRemoteStream = Native.WebRTC.closeRemoteStream
 
 -- public
 
-startStreaming : String -> String -> Task () ()
+startStreaming : MediaType -> List PeerId -> Task () ()
 startStreaming = Native.WebRTC.startStreaming
 
-endStreaming : String -> Task () ()
+endStreaming : MediaType -> Task () ()
 endStreaming = Native.WebRTC.endStreaming
 
 beforeJoin : String -> Task () ()
@@ -118,4 +118,5 @@ replay actions =
     OfferCandidate from data_ -> addCandidate from data_
     AnswerCandidate from data_ -> addCandidate from data_
     EndStream from data_ -> closeRemoteStream from data_
+    _ -> Task.succeed ()
   in Signal.map f actions
