@@ -13,10 +13,11 @@ import Signal exposing (..)
 import Debug exposing (log)
 
 -- Models
+type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias PeerId = String
 
-Action =
+type Action =
     OfferSDP String String
   | AnswerSDP String String
   | OfferCandidate String String
@@ -25,7 +26,7 @@ Action =
   | Undefined
 
 encode : Action -> String
-encode action = Json.encode 0 (encoder action)
+encode action = Json.Encode.encode 0 (encoder action)
 
 encoder action =
   let (type_, from, data_) = case action of
@@ -34,10 +35,10 @@ encoder action =
     OfferCandidate f d -> ("offerCandidate", f, d)
     AnswerCandidate f d -> ("answerCandidate", f, d)
     EndStream f d -> ("endStream", f, d)
-  in object
-    [ ("type", string type_)
-    , ("from", string from)
-    , ("data", string data_)
+  in Json.Encode.object
+    [ ("type", Json.Encode.string type_)
+    , ("from", Json.Encode.string from)
+    , ("data", Json.Encode.string data_)
     ]
 
 actions : Signal String -> Signal Action
