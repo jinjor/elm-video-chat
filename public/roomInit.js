@@ -122,7 +122,7 @@ function offerSDP(clientId, cm, send, mediaType, peers) {
       if(error === 'not-installed') {
         alert('Screen Capturing is not installed.');
         return;
-      }else if(error === 'installed-disabled') {
+      } else if(error === 'installed-disabled') {
         alert('Screen Capturing is installed but disabled.');
         return;
       } else {
