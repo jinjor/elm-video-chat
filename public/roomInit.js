@@ -13,28 +13,6 @@ function uuid() {
   }
   return uuid;
 }
-function setupWebSocket(room, clientId, onmessage) {
-  var send = function(data) {
-    data.room = getRoom();
-    data.from = clientId;
-    // conosle.log(data);
-    roomSignal.ports.wssend.send(JSON.stringify(data));
-  };
-  roomSignal.ports.wsmessage.subscribe(function(data) {
-    onmessage(JSON.parse(data));
-  });
-  roomSignal.ports.wsopened.subscribe(function(opened) {
-    if(opened) {
-      var time = new Date().getTime();
-      send({
-        type: 'join',
-        time: time
-      });
-    }
-  });
-  return send;
-}
-
 
 
 function polyfill() {
@@ -140,7 +118,6 @@ function offerSDP(clientId, cm, send, mediaType, peers) {
     mediaOptions.video = true;
     f(mediaOptions);
   } else if(mediaType === 'screen') {
-
     getScreenId(function (error, sourceId, mediaOptions) {
       if(error === 'not-installed') {
         alert('Screen Capturing is not installed.');
@@ -345,7 +322,13 @@ roomSignal.ports.initRoom.subscribe(function(initial) {
   var cm = ceateConnectionManager();
   var clientId = uuid();
 
-  var send = setupWebSocket(room, clientId, function(e) {
+  var send = function(data) {
+    data.room = getRoom();
+    data.from = clientId;
+    roomSignal.ports.wssend.send(JSON.stringify(data));
+  };
+  roomSignal.ports.wsmessage.subscribe(function(data) {
+    var e = JSON.parse(data)
     onMessage(clientId, cm, send, e);
   });
   roomSignal.ports.startStreaming.subscribe(function(args) {

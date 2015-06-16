@@ -72,10 +72,10 @@ fetchRoom roomId = (API.getInitialData roomId)
 
 port initRoom : Signal API.InitialData
 port initRoom =
-  let f action = case action of
-    InitRoom initial -> Just initial
+  let f x = case x of
+    (InitRoom initial, True) -> Just initial
     _ -> Nothing
-  in Signal.filterMap f nullInitialData actionSignal
+  in Signal.filterMap f nullInitialData (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
 
 
 port updateRoom : Signal String
@@ -110,9 +110,6 @@ constructedWsMessage =
 
 port wsmessage : Signal String
 port wsmessage = WS.message
-
-port wsopened : Signal Bool
-port wsopened = WS.opened
 
 port wssend : Signal String
 port wssend' : Signal (Task () ())

@@ -66,7 +66,11 @@ is13 code =
   if code == 13 then Ok () else Err "not the right key code"
 
 
--- Views(no signals appears here)
+
+
+
+
+-- Views
 messageView : Name -> ChatMessage -> Html
 messageView myName (name, message, time) =
   let self = myName == name
@@ -120,7 +124,6 @@ closedView address noReadCount =
       text <| "Chat(" ++ (toString noReadCount) ++ ")"
     ]
   ]
-
 
 view : Signal.Address Action -> Model -> Html
 view address model =
