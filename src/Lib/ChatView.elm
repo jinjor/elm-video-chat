@@ -37,7 +37,7 @@ init = {
 
 
 update : Action -> Model -> Model
-update action model = case action of
+update action model = case log "ChatView.action" action of
   Open -> { model |
     opened <- True,
     noReadCount <- 0

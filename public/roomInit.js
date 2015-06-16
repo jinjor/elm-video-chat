@@ -21,7 +21,6 @@ function setupWebSocket(room, clientId, onmessage) {
     roomSignal.ports.wssend.send(JSON.stringify(data));
   };
   roomSignal.ports.wsmessage.subscribe(function(data) {
-    console.log(data);
     onmessage(JSON.parse(data));
   });
   roomSignal.ports.wsopened.subscribe(function(opened) {

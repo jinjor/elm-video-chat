@@ -45,6 +45,7 @@ type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
 type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String Time
 
+mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
 initialContext = { roomName = "　"
   , me = {name="", email=""}
@@ -59,7 +60,6 @@ initialContext = { roomName = "　"
   , localScreen = False
   , chat = ChatView.init }
 
-
 nullInitialData : API.InitialData
 nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}}
 
@@ -69,6 +69,14 @@ fetchRoom : String -> Task err ()
 fetchRoom roomId = (API.getInitialData roomId)
     `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
     `onError` (\err -> log "err" (succeed ()))
+
+port initRoom : Signal API.InitialData
+port initRoom =
+  let f action = case action of
+    InitRoom initial -> Just initial
+    _ -> Nothing
+  in Signal.filterMap f nullInitialData actionSignal
+
 
 port updateRoom : Signal String
 
@@ -99,16 +107,6 @@ constructedWsMessage =
             Err s -> (type_, peerId, Nothing)
         Nothing -> (type_, peerId, Nothing)
   in Signal.map f rawWsMessage
-
-
-port processWS : Signal(Task x ())
-port processWS =
-  let f action = case action of
-    (WSAction (type_, peerId, Just (WSJoin user))) -> Signal.send actions.address (Join peerId user)
-    (WSAction (type_, peerId, Just (WSLeave))) -> Signal.send actions.address (Leave peerId)
-    _ -> Signal.send actions.address NoOp
-  in Signal.map f actionSignal
-
 
 port wsmessage : Signal String
 port wsmessage = WS.message
@@ -190,22 +188,13 @@ localVideoUrlList' =
 port addConnection : Signal Connection
 port removeConnection : Signal Connection
 
--- Statics
-mediaTypes = ["mic", "video", "screen"]
 
 -- Signals
 
 connection : String -> String -> Connection
 connection peer mediaType =(peer, mediaType)
 
-actionSignal : Signal Action
-actionSignal = Signal.mergeMany [
-  actions.signal,
-  WSAction <~ constructedWsMessage,
-  UpdateVideoUrls <~ videoUrlList',
-  UpdateLocalVideoUrls <~ localVideoUrlList',
-  AddConnection <~ addConnection,
-  RemoveConnection <~ removeConnection]
+
 
 updateActionSignal : Signal Action
 updateActionSignal =
@@ -258,13 +247,32 @@ type Action
   | RemoveConnection Connection
   | UpdateVideoUrls (Dict Connection String)
   | UpdateLocalVideoUrls (Dict String String)
-  | Join PeerId User
-  | Leave PeerId
   | ChatViewAction ChatView.Action
   | FullScreen String
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | WSAction WSMessage
+
+-- input
+actions : Signal.Mailbox Action
+actions = Signal.mailbox NoOp
+
+
+actionSignal : Signal Action
+actionSignal = Signal.mergeMany [
+  actions.signal
+  , WSAction <~ constructedWsMessage
+  , UpdateVideoUrls <~ videoUrlList'
+  , UpdateLocalVideoUrls <~ localVideoUrlList'
+  , AddConnection <~ addConnection
+  , RemoveConnection <~ removeConnection
+  ]
+
+
+
+
+
+
 
 update : Action -> Context -> Context
 update action context =
@@ -306,34 +314,30 @@ update action context =
         { context |
           localVideoUrls <- videoUrls
         }
-      Join peerId user ->
-        { context |
-          peers <- Set.insert peerId context.peers,
-          users <- Dict.insert peerId user context.users
-        }
-      Leave peerId ->
-        { context |
-          peers <- Set.remove peerId context.peers,
-          users <- Dict.remove peerId context.users
-        }
       ChatViewAction action ->
         { context |
           chat <- ChatView.update action context.chat
         }
       WSAction (type_, peerId, Just (WSChatMessage s t)) ->
-        --TODO andthen
         let context1 = { context |
             chat <- ChatView.update (ChatView.AddMessage (peerId, s, Date.fromTime t)) context.chat
           }
         in { context1 |
-            chat <- ChatView.update (ChatView.UpdateField "") context.chat
+            chat <- ChatView.update (ChatView.UpdateField "") context1.chat
           }
+      WSAction (type_, peerId, Just (WSJoin user)) ->
+        { context |
+          peers <- Set.insert peerId context.peers,
+          users <- Dict.insert peerId user context.users
+        }
+      WSAction (type_, peerId, Just (WSLeave)) ->
+        { context |
+          peers <- Set.remove peerId context.peers,
+          users <- Dict.remove peerId context.users
+        }
+      _ -> context
 
-
-actions : Signal.Mailbox Action
-actions = Signal.mailbox NoOp
-
--- Views(no signals appears here)
+-- Views
 
 fullscreenButton : Address Action -> String -> Html
 fullscreenButton address videoURL = div [
@@ -356,8 +360,8 @@ windowHeader title buttons =
   let buttonGroup = div [class "btn-group pull-right"] buttons
   in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
-----------------
 
+-- View
 view : Context -> Html
 view c =
   div [] [
@@ -478,8 +482,6 @@ mediaWindowView c mediaType title videoUrl local =
 -- Main
 main : Signal Html
 main = view <~ context
-
-
 
 
 
