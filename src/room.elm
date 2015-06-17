@@ -56,15 +56,6 @@ port clientId : String
 port roomName : String
 
 
--- TODO fix timing
--- port initRoom : Signal (Task () ())
--- port initRoom =
---   let f x = case x of
---     (InitRoom initial, True) -> WS.send joinToJson
---     _ -> Task.succeed ()
---   in Signal.map f (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
-
-
 port updateRoom : Signal String
 
 port runner : Signal (Task err ())
