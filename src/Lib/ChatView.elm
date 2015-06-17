@@ -1,4 +1,6 @@
-module Lib.ChatView (Model, init, Action(UpdateField, AddMessage, Send), update, view, ChatMessage) where
+module Lib.ChatView (Model, init, Action(..), update, view, actions) where
+
+import Task exposing (..)
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -10,14 +12,24 @@ import Signal exposing (..)
 
 import Debug exposing (log)
 import Date exposing (Date)
+import Time exposing (Time)
 
 import Lib.PanelHeader exposing (..)
 
 -- Models
 
 type alias Name = String
+type alias PeerId = String
 type alias ChatMessage = (Name, String, Date)
-type Action = Open | Close | UpdateField String | Send String | AddMessage ChatMessage
+type Action =
+    Open
+  | Close
+  | UpdateField String
+  | Send String
+  | Message PeerId String Time
+  | MyName String
+  | Undefined
+
 type alias Model = {
   opened : Bool,
   messages : List ChatMessage,
@@ -45,14 +57,18 @@ update action model = case log "ChatView.action" action of
   Close -> { model |
     opened <- False
   }
-  UpdateField field -> { model |
-    field <- field
-  }
-  AddMessage mes -> { model |
-    messages <- mes :: model.messages,
+  Message peerId s time -> { model |
+    messages <- (peerId, s, Date.fromTime time) :: model.messages,
+    field <- "",
     noReadCount <- if model.opened then 0 else model.noReadCount + 1
   }
+  MyName myName -> { model |
+    myName <- myName
+  }
   _ -> model
+
+
+-----
 
 
 onEnter : Address () -> Attribute
@@ -66,7 +82,25 @@ is13 code =
   if code == 13 then Ok () else Err "not the right key code"
 
 
+-- Actions
+actions : Signal String -> Signal Action
+actions rawJsonSignal = Signal.map decode rawJsonSignal
 
+decode : String -> Action
+decode s = case (Json.decodeString decoder s) of
+  Ok action -> action
+  _ -> Undefined
+
+decoder : Json.Decoder Action
+decoder = Json.object3 (\t f (mes, time) -> Message f mes time)
+    ("type" := Json.string)
+    ("from" := Json.string)
+    ("data" := messageDecoder)
+
+messageDecoder : Json.Decoder (String, Time)
+messageDecoder = Json.object2 (,)
+  ("message" := Json.string)
+  ("time" := Json.float)
 
 
 

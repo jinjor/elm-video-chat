@@ -30,7 +30,7 @@ type Action =
   | RemovePeer String
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
-  | Request String
+  | Request (String, String, String)
   | OfferSDP String String
   | AnswerSDP String String
   | OfferCandidate String String
@@ -171,7 +171,7 @@ joinDecoder =
 
 --
 
-requests : Signal String
+requests : Signal (String, String, String)
 requests = Native.WebRTC.requests
 
 onLocalVideoURL : Signal (MediaType, Maybe String)

@@ -11,7 +11,7 @@ function uuid() {
 }
 var clientId = window.clientId || uuid();//TODO
 
-(function(){
+(function() {
 
   function getRoom() {
     var roomId = decodeURI(location.href.split('/room/')[1].split('?')[0]);
@@ -21,36 +21,11 @@ var clientId = window.clientId || uuid();//TODO
   //--------------
 
   var roomSignal = Elm.fullscreen(Elm.Main, {
+    clientId: clientId,
+    roomName: getRoom(),
     updateRoom: getRoom(),
     websocketRunner: [],
     wssend: ""
-  });
-  roomSignal.ports.initRoom.subscribe(function(initial) {
-    console.log('initRoom')
-
-    var room = initial.room;
-
-    var send = function(data) {
-      data.room = getRoom();
-      data.from = clientId;
-      roomSignal.ports.wssend.send(JSON.stringify(data));
-    };
-
-    roomSignal.ports.sendChat.subscribe(function(message) {
-      var time = new Date().getTime();
-      send({
-        from: clientId,
-        type: 'message',
-        data: {
-          time: time,
-          message: message
-        }
-      });
-    });
-    send({
-      from: clientId,
-      type: 'join'
-    })
   });
 
 

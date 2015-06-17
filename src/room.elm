@@ -34,9 +34,6 @@ type alias Context = { roomName:String
                       , chat: ChatView.Model}
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
-type alias RawWSMessage = (String, PeerId, String)
-type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
-type WsMessageBody = WSChatMessage String Time
 
 mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
@@ -55,12 +52,15 @@ fetchRoom roomId = (API.getInitialData roomId)
     `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
     `onError` (\err -> log "err" (succeed ()))
 
-port initRoom : Signal API.InitialData
+port clientId : String
+port roomName : String
+
+port initRoom : Signal (Task () ())
 port initRoom =
   let f x = case x of
-    (InitRoom initial, True) -> Just initial
-    _ -> Nothing
-  in Signal.filterMap f nullInitialData (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
+    (InitRoom initial, True) -> WS.send joinToJson
+    _ -> Task.succeed ()
+  in Signal.map f (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
 
 
 port updateRoom : Signal String
@@ -73,121 +73,81 @@ port websocketRunner : Signal ()
 port websocketRunner' : Signal (Task () ())
 port websocketRunner' = Signal.map (\_ -> WS.connect "wss://localhost:9999/ws") websocketRunner
 
-rawWsMessage : Signal RawWSMessage
-rawWsMessage =
-  let f s = case (log "raw" <| Json.decodeString wsMessageDecoder s) of
-    Ok value -> value
-    Err s -> ("","","")
-  in Signal.map f WS.message
 
-
-constructedWsMessage : Signal WSMessage
-constructedWsMessage =
-  let f (type_, peerId, data) =
-    let decoder = wsMessageBodyDecoder type_
-      in case decoder of
-        Just d ->
-          case (log "parse" (Json.decodeString d data)) of
-            Ok value -> (type_, peerId, Just value)
-            Err s -> (type_, peerId, Nothing)
-        Nothing -> (type_, peerId, Nothing)
-  in Signal.map f rawWsMessage
-
-
-rtcMessage : Signal WebRTC.Action
-rtcMessage = WebRTC.actions WS.message
-
-port wssend : Signal String
-port wssend' : Signal (Task () ())
-port wssend' = WS.send <~ wssend
-
-
-port sendChat : Signal String
-port sendChat =
+port runTasks : Signal (Task () ())
+port runTasks =
   let f action = case action of
-    ChatViewAction (ChatView.Send mes) -> Just mes
-    _ -> Nothing
-  in Signal.filterMap f "" actionSignal
-
-
-port runRTC : Signal (Task () ())
-port runRTC =
-  let f action = case action of
+    RTCAction (WebRTC.Request x) -> WS.send (signalToJson x)
     RTCAction x -> WebRTC.doTask x
+    ChatAction (ChatView.Send x) -> WS.send (messageToJson x)
+    FullScreen x -> VideoControl.requestFullScreen x
     _ -> Task.succeed ()
   in Signal.map f actionSignal
 
+signalToJson : (String, String, String) -> String
+signalToJson (type_, to, data_) =
+  let value = Json.Encode.object [
+    ("room", Json.Encode.string roomName),
+    ("from", Json.Encode.string clientId),
+    ("to", Json.Encode.string to),
+    ("type", Json.Encode.string type_),
+    ("data", Json.Encode.string data_)
+  ]
+  in Json.Encode.encode 0 value
 
-port requestFullScreen : Signal (Task () ())
-port requestFullScreen =
-  let f action = case action of
-    FullScreen a -> Just (VideoControl.requestFullScreen a)
-    _ -> Nothing
-  in Signal.filterMap f (VideoControl.requestFullScreen "") actionSignal
+messageToJson : String -> String
+messageToJson mes =
+  let value = Json.Encode.object [
+    ("room", Json.Encode.string roomName),
+    ("from", Json.Encode.string clientId),
+    ("type", Json.Encode.string "message"),
+    ("data", Json.Encode.string mes)
+  ]
+  in Json.Encode.encode 0 value
 
+joinToJson : String
+joinToJson =
+  let value = Json.Encode.object [
+    ("room", Json.Encode.string roomName),
+    ("from", Json.Encode.string clientId),
+    ("type", Json.Encode.string "join")
+  ]
+  in Json.Encode.encode 0 value
 
 -- Signals
 
-connection : String -> String -> Connection
-connection peer mediaType =(peer, mediaType)
-
-
-
-updateActionSignal : Signal Action
-updateActionSignal =
-  let f action = case action of
-    ChatViewAction (ChatView.Send _) -> False
-    _ -> True
-  in Signal.filter f NoOp actionSignal
-
 context : Signal Context
-context = Signal.foldp update initialContext updateActionSignal
+context = Signal.foldp update initialContext actionSignal
 
 userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.rtc.users of
   Just user -> user
   Nothing -> { name="", email="" }
 
-wsMessageDecoder : Json.Decoder RawWSMessage
-wsMessageDecoder = Json.object3 (\t f d -> (t, f, Json.Encode.encode 0 d))
-  ("type" := Json.string)
-  ("from" := Json.string)
-  ("data" := Json.value)
+-- Action --
 
-wsMessageBodyDecoder : String -> Maybe (Json.Decoder WsMessageBody)
-wsMessageBodyDecoder type_ = case type_ of
-  "message" -> Just wsMessageChatMessageDecoder
-  _ -> Nothing
-
-
-wsMessageChatMessageDecoder : Json.Decoder WsMessageBody
-wsMessageChatMessageDecoder = Json.object2 (\mes time -> WSChatMessage mes time)
-  ("message" := Json.string)
-  ("time" := Json.float)
-
--- Actions
 type Action
   = NoOp
-  | InitRoom API.InitialData
   | RTCAction WebRTC.Action
+  | ChatAction ChatView.Action
+  | InitRoom API.InitialData
   | ChatViewAction ChatView.Action
-  | WSAction WSMessage
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | FullScreen String
 
--- input
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
-
 
 actionSignal : Signal Action
 actionSignal = Signal.mergeMany [
   actions.signal
-  , WSAction <~ constructedWsMessage
-  , RTCAction <~ rtcMessage
+  , ChatAction <~ ChatView.actions WS.message
+  , RTCAction <~ WebRTC.actions WS.message
   ]
 
+
+-- Update --
 
 update : Action -> Context -> Context
 update action context =
@@ -198,14 +158,10 @@ update action context =
           rtc <- WebRTC.update event context.rtc
         }
       InitRoom initial ->
-        let chat = context.chat
-            newChat = { chat |
-              myName <- initial.user.name
-            }
-        in { context |
+        { context |
           roomName <- initial.room.id,
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
-          chat <- newChat
+          chat <- ChatView.update (ChatView.MyName initial.user.name) context.chat
         }
       StartStreaming a -> { context |
           rtc <- WebRTC.update (WebRTC.StartStreaming a) context.rtc
@@ -217,16 +173,8 @@ update action context =
         { context |
           chat <- ChatView.update action context.chat
         }
-      WSAction (type_, peerId, Just (WSChatMessage s t)) ->
-        let context1 = { context |
-            chat <- ChatView.update (ChatView.AddMessage (peerId, s, Date.fromTime t)) context.chat
-          }
-        in { context1 |
-            chat <- ChatView.update (ChatView.UpdateField "") context1.chat
-          }
-      _ -> context
 
--- Views
+-- View --
 
 fullscreenButton : Address Action -> String -> Html
 fullscreenButton address videoURL = div [

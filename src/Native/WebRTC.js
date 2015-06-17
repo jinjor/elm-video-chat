@@ -11,7 +11,7 @@ function uuid() {
 }
 var clientId = window.clientId || uuid();//TODO
 
-(function(){
+(function() {
 
   Elm.Native.WebRTC = {};
 
@@ -45,7 +45,7 @@ var clientId = window.clientId || uuid();//TODO
     var send = function(data) {
       data.room = room;
       data.from = clientId;
-      localRuntime.notify(requests.id, JSON.stringify(data));
+      localRuntime.notify(requests.id, Utils.Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
     };
 
     var _answerSDP = function(from, dataString) {
