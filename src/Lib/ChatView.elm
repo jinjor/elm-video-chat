@@ -1,4 +1,4 @@
-module Lib.ChatView (Model, init, Action(..), update, view, actions) where
+module Lib.ChatView (Model, init, Action(..), update, view, decode) where
 
 import Task exposing (..)
 
@@ -86,13 +86,11 @@ is13 code =
 
 
 -- Actions
-actions : Signal String -> Signal Action
-actions rawJsonSignal = Signal.map decode rawJsonSignal
 
-decode : String -> Action
+decode : String -> Maybe Action
 decode s = case (Json.decodeString decoder s) of
-  Ok action -> action
-  _ -> Undefined
+  Ok action -> Just action
+  _ -> Nothing
 
 decoder : Json.Decoder Action
 decoder = Json.object3 (\t f (mes, time) -> Message f mes time)

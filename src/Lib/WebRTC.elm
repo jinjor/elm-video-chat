@@ -1,4 +1,4 @@
-module Lib.WebRTC (Model, init, Action(..), update, actions, doTask) where
+module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode) where
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -130,20 +130,21 @@ encoder action =
     , ("data", Json.Encode.string data_)
     ]
 
-actions : Signal String -> Signal Action
-actions rawJsonSignal = Signal.mergeMany [
-    decode <~ rawJsonSignal
-  , LocalVideoUrl <~ onLocalVideoURL
+actions : Signal Action
+actions = Signal.mergeMany [
+    LocalVideoUrl <~ onLocalVideoURL
   , RemoteVideoUrl <~ onRemoteVideoURL
   , AddConnection <~ onAddConnection
   , RemoveConnection <~ onRemoveConnection
   , Request <~ requests
   ]
 
-decode : String -> Action
+decode : String -> Maybe Action
 decode s = case Json.decodeString decoder (log "WebRTC.decode" s) of
-  Ok decoded -> (log "WebRTC decoded" decoded)
-  Err s -> Undefined
+  Ok decoded -> case decoded of
+    Undefined -> Nothing
+    _ -> Just decoded
+  Err s -> Nothing
 
 convertToAction : String -> PeerId -> String -> Action
 convertToAction type_ from data_ =

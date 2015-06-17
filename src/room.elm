@@ -143,11 +143,19 @@ type Action
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
 
+decode : String -> Action
+decode s = case WebRTC.decode s of
+  Just a -> RTCAction a
+  Nothing -> case ChatView.decode s of
+    Just a -> ChatAction a
+    Nothing -> NoOp
+
+
 actionSignal : Signal Action
 actionSignal = Signal.mergeMany [
   actions.signal
-  , ChatAction <~ ChatView.actions WS.message
-  , RTCAction <~ WebRTC.actions WS.message
+  , decode <~ WS.message
+  , RTCAction <~ WebRTC.actions
   ]
 
 
