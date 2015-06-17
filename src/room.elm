@@ -57,12 +57,12 @@ port roomName : String
 
 
 -- TODO fix timing
-port initRoom : Signal (Task () ())
-port initRoom =
-  let f x = case x of
-    (InitRoom initial, True) -> WS.send joinToJson
-    _ -> Task.succeed ()
-  in Signal.map f (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
+-- port initRoom : Signal (Task () ())
+-- port initRoom =
+--   let f x = case x of
+--     (InitRoom initial, True) -> WS.send joinToJson
+--     _ -> Task.succeed ()
+--   in Signal.map f (Signal.map2 (\x y -> (x, y)) actionSignal WS.opened)
 
 
 port updateRoom : Signal String
@@ -78,13 +78,18 @@ port websocketRunner' = Signal.map (\_ -> WS.connect "wss://localhost:9999/ws") 
 
 port runTasks : Signal (Task () ())
 port runTasks =
-  let f action time = case action of
-    RTCAction (WebRTC.Request x) -> WS.send (signalToJson x)
-    RTCAction x -> WebRTC.doTask x
-    ChatAction (ChatView.Send x) -> WS.send (messageToJson x <| log "time "time)
-    FullScreen x -> VideoControl.requestFullScreen x
-    _ -> Task.succeed ()
-  in Signal.map2 f actionSignal (Time.every Time.second)
+  let f action opened = (case log "runTasks" (opened, action) of
+      (True, InitRoom initial) -> WS.send joinToJson
+      (_, RTCAction (WebRTC.Request x)) -> WS.send (signalToJson x)
+      (_, RTCAction x) -> WebRTC.doTask x
+      (_, ChatAction (ChatView.Send x)) -> WS.send (messageToJson x 0) -- TODO
+      (_, FullScreen x) -> VideoControl.requestFullScreen x
+      (_, StartStreaming x) -> WebRTC.doTask <| WebRTC.StartStreaming x
+      (_, EndStreaming x) -> WebRTC.doTask <| WebRTC.EndStreaming x
+      _ -> Task.succeed ()
+    )
+  in Signal.map2 f actionSignal WS.opened
+
 
 signalToJson : (String, String, String) -> String
 signalToJson (type_, to, data_) =

@@ -224,7 +224,7 @@ beforeLeave = Native.WebRTC.beforeLeave
 --
 
 doTask : Action -> Task () ()
-doTask action = case action of
+doTask action = case log "WebRTC.doTask" action of
     OfferSDP from data_ -> answerSDP from data_
     AnswerSDP from data_ -> acceptAnswer from data_
     OfferCandidate from data_ -> addCandidate from data_
