@@ -9,7 +9,7 @@ import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
 
 import Date exposing (Date)
-import Time exposing (Time)
+import Time exposing (Time, every, second)
 import String
 import Maybe
 import Set exposing (Set)
@@ -76,13 +76,13 @@ port websocketRunner' = Signal.map (\_ -> WS.connect "wss://localhost:9999/ws") 
 
 port runTasks : Signal (Task () ())
 port runTasks =
-  let f action = case action of
+  let f action time = case action of
     RTCAction (WebRTC.Request x) -> WS.send (signalToJson x)
     RTCAction x -> WebRTC.doTask x
-    ChatAction (ChatView.Send x) -> WS.send (messageToJson x)
+    ChatAction (ChatView.Send x) -> WS.send (messageToJson x <| log "time "time)
     FullScreen x -> VideoControl.requestFullScreen x
     _ -> Task.succeed ()
-  in Signal.map f actionSignal
+  in Signal.map2 f actionSignal (Time.every Time.second)
 
 signalToJson : (String, String, String) -> String
 signalToJson (type_, to, data_) =
@@ -95,13 +95,16 @@ signalToJson (type_, to, data_) =
   ]
   in Json.Encode.encode 0 value
 
-messageToJson : String -> String
-messageToJson mes =
+messageToJson : String -> Time -> String
+messageToJson mes time =
   let value = Json.Encode.object [
     ("room", Json.Encode.string roomName),
     ("from", Json.Encode.string clientId),
     ("type", Json.Encode.string "message"),
-    ("data", Json.Encode.string mes)
+    ("data", Json.Encode.object [
+      ("message", Json.Encode.string mes),
+      ("time", Json.Encode.float time)
+    ])
   ]
   in Json.Encode.encode 0 value
 
@@ -131,7 +134,6 @@ type Action
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
   | InitRoom API.InitialData
-  | ChatViewAction ChatView.Action
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | FullScreen String
@@ -152,7 +154,6 @@ actionSignal = Signal.mergeMany [
 update : Action -> Context -> Context
 update action context =
     case log "action" action of
-      NoOp -> context
       RTCAction event ->
         { context |
           rtc <- WebRTC.update event context.rtc
@@ -169,10 +170,11 @@ update action context =
       EndStreaming a -> { context |
           rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
         }
-      ChatViewAction action ->
+      ChatAction action ->
         { context |
           chat <- ChatView.update action context.chat
         }
+      _ -> context
 
 -- View --
 
@@ -206,7 +208,7 @@ view c =
     div [class "container"] [
       statusView c,
       mainView c,
-      ChatView.view (forwardTo c.address ChatViewAction) c.chat
+      ChatView.view (forwardTo c.address ChatAction) c.chat
     ]
   ]
 

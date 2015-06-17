@@ -62,6 +62,9 @@ update action model = case log "ChatView.action" action of
     field <- "",
     noReadCount <- if model.opened then 0 else model.noReadCount + 1
   }
+  UpdateField field -> { model |
+    field <- field
+  }
   MyName myName -> { model |
     myName <- myName
   }

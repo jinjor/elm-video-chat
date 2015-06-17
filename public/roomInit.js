@@ -24,8 +24,7 @@ var clientId = window.clientId || uuid();//TODO
     clientId: clientId,
     roomName: getRoom(),
     updateRoom: getRoom(),
-    websocketRunner: [],
-    wssend: ""
+    websocketRunner: []
   });
 
 
