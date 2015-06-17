@@ -70,10 +70,14 @@ requests : Signal String
 requests = Native.WebRTC.requests
 
 onLocalVideoURL : Signal (String, Maybe String)
-onLocalVideoURL = Native.WebRTC.onLocalVideoURL
+onLocalVideoURL =
+  let f (mediaType, url) = if (log "url" url) == "" then (mediaType, Nothing) else (mediaType, Just url)
+  in Signal.map f Native.WebRTC.onLocalVideoURL
 
 onRemoteVideoURL : Signal (Connection, Maybe String)
-onRemoteVideoURL = Native.WebRTC.onRemoteVideoURL
+onRemoteVideoURL =
+  let f (conn, url) = if url == "" then (conn, Nothing) else (conn, Just url)
+  in Signal.map f Native.WebRTC.onRemoteVideoURL
 
 onAddConnection : Signal Connection
 onAddConnection = Native.WebRTC.onAddConnection

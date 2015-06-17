@@ -21,6 +21,7 @@ var clientId = window.clientId || uuid();//TODO
     if (localRuntime.Native.WebRTC.values) return localRuntime.Native.WebRTC.values;
 
     var Task = Elm.Native.Task.make(localRuntime);
+    var Utils = Elm.Native.Utils.make(localRuntime);
     var NS = Elm.Native.Signal.make(localRuntime);
     var initialRequest = {
       type: "",
@@ -28,10 +29,10 @@ var clientId = window.clientId || uuid();//TODO
       data: {}
     };
     var requests = NS.input('WebRTC.requests', JSON.stringify(initialRequest));
-    var onLocalVideoURL = NS.input('WebRTC.onLocalVideoURL', ["", ""]);
-    var onRemoteVideoURL = NS.input('WebRTC.onRemoteVideoURL', [["", ""], ""]);
-    var onAddConnection = NS.input('WebRTC.onAddConnection', ["", ""]);
-    var onRemoveConnection = NS.input('WebRTC.onRemoveConnection', ["", ""]);
+    var _onLocalVideoURL = NS.input('WebRTC.onLocalVideoURL', Utils.Tuple2("", ""));
+    var _onRemoteVideoURL = NS.input('WebRTC.onRemoteVideoURL', Utils.Tuple2(Utils.Tuple2("", ""), ""));
+    var _onAddConnection = NS.input('WebRTC.onAddConnection',  Utils.Tuple2("", ""));
+    var _onRemoveConnection = NS.input('WebRTC.onRemoveConnection',  Utils.Tuple2("", ""));
 
     var cm = ceateConnectionManager({
       iceServers: [{
@@ -54,14 +55,11 @@ var clientId = window.clientId || uuid();//TODO
           from: from,
           data: data
         }, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(onRemoteVideoURL.id, [[from, mediaType], url]);
+          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
         }, function onAddConnection(from, mediaType) {
-          // setTimeout(function(){
-          //   localRuntime.notify(onAddConnection.id, [from, mediaType]);
-          // })
-          localRuntime.notify(onAddConnection.id, [from, mediaType]);
+          localRuntime.notify(_onAddConnection.id, Utils.Tuple2(from, mediaType));
         }, function onRemoveConnection(from, mediaType) {
-          localRuntime.notify(onRemoveConnection.id, [from, mediaType]);
+          localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
         });
         callback(Task.succeed());
       });
@@ -90,7 +88,7 @@ var clientId = window.clientId || uuid();//TODO
       var data = JSON.parse(dataString);
       return Task.asyncFunction(function(callback) {
         closeRemoteStream(cm, from, mediaType, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(onRemoteVideoURL.id, [[from, mediaType], url]);
+          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
         });
         callback(Task.succeed());
       });
@@ -100,17 +98,15 @@ var clientId = window.clientId || uuid();//TODO
       return Task.asyncFunction(function(callback) {
         offerSDP(clientId, cm, send, mediaType, peers, function onLocalVideoURL(mediaType, url) {
           console.log([mediaType, url]);
-          setTimeout(function(){
-            localRuntime.notify(onLocalVideoURL.id, [mediaType, url]);
-          });
-
+          localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, url));
         });
+
         callback(Task.succeed());
       });
     };
     var endStreaming = function(mediaType) {
       return Task.asyncFunction(function(callback) {
-        localRuntime.notify(onLocalVideoURL.id, [mediaType, null]);
+        localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, null));
         endStreaming(clientId, cm, send, mediaType);
         callback(Task.succeed());
       });
@@ -124,7 +120,7 @@ var clientId = window.clientId || uuid();//TODO
     var beforeLeave = function(peerId) {
       return Task.asyncFunction(function(callback) {
         leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(onRemoteVideoURL.id, [[from, mediaType], url]);
+          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
         });
         callback(Task.succeed());
       });
@@ -140,10 +136,10 @@ var clientId = window.clientId || uuid();//TODO
       beforeJoin: beforeJoin,
       beforeLeave: beforeLeave,
       requests: requests,
-      onLocalVideoURL: onLocalVideoURL,
-      onRemoteVideoURL: onRemoteVideoURL,
-      onAddConnection: onAddConnection,
-      onRemoveConnection: onRemoveConnection,
+      onLocalVideoURL: _onLocalVideoURL,
+      onRemoteVideoURL: _onRemoteVideoURL,
+      onAddConnection: _onAddConnection,
+      onRemoveConnection: _onRemoveConnection,
     };
   };
   function getRoom() {
@@ -428,14 +424,6 @@ var clientId = window.clientId || uuid();//TODO
 		while (list.ctor !== '[]') {
 			var entry = list._0;
       array.push(entry);
-			// if (entry.key === ATTRIBUTE_KEY) {
-			// 	object.attributes = object.attributes || {};
-			// 	object.attributes[entry.value.attrKey] = entry.value.attrValue;
-			// }
-			// else
-			// {
-			// 	object[entry.key] = entry.value;
-			// }
 			list = list._1;
 		}
     console.log(array);
