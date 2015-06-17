@@ -28,37 +28,21 @@ import Debug exposing (log)
 
 -- Models
 
-type alias Context = { me: User
-                      , roomName:String
+type alias Context = { roomName:String
                       , address: Signal.Address Action
-                      , peers: Set PeerId
-                      , users: Dict PeerId User
-                      , connections: Set Connection
-                      , videoUrls: Dict Connection String
-                      , localVideoUrls: Dict String String
-                      , localVideo: Bool
-                      , localAudio: Bool
-                      , localScreen: Bool
+                      , rtc : WebRTC.Model
                       , chat: ChatView.Model}
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias RawWSMessage = (String, PeerId, String)
 type alias WSMessage = (String, PeerId, Maybe WsMessageBody)
-type WsMessageBody = WSJoin User | WSLeave | WSChatMessage String Time
+type WsMessageBody = WSChatMessage String Time
 
 mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
 initialContext = { roomName = "　"
-  , me = {name="", email=""}
   , address = actions.address
-  , peers = Set.empty
-  , users = Dict.empty
-  , connections = Set.empty
-  , videoUrls = Dict.empty
-  , localVideoUrls = Dict.empty
-  , localVideo = False
-  , localAudio = False
-  , localScreen = False
+  , rtc = WebRTC.init
   , chat = ChatView.init }
 
 nullInitialData : API.InitialData
@@ -109,17 +93,9 @@ constructedWsMessage =
         Nothing -> (type_, peerId, Nothing)
   in Signal.map f rawWsMessage
 
-port wsmessage : Signal String
-port wsmessage = WS.message
-
 
 rtcMessage : Signal WebRTC.Action
 rtcMessage = WebRTC.actions WS.message
-
-port replay : Signal (Task () ())
-port replay = WebRTC.replay rtcMessage
-
-
 
 port wssend : Signal String
 port wssend' : Signal (Task () ())
@@ -134,51 +110,13 @@ port sendChat =
   in Signal.filterMap f "" actionSignal
 
 
-
--- port beforeJoin : Signal String
--- port beforeJoin =
---   let f action = case action of
---     (WSAction (type_, peerId, Just (WSJoin user))) -> Just peerId
---     _ -> Nothing
---   in Signal.filterMap f "" actionSignal
---
---
--- port beforeLeave : Signal String
--- port beforeLeave =
---   let f action = case action of
---     (WSAction (type_, peerId, Just WSLeave)) -> Just peerId
---     _ -> Nothing
---   in Signal.filterMap f "" actionSignal
-
---
--- port startStreaming : Signal (String, List PeerId)
--- port startStreaming =
---   let f action = case action of
---     StartStreaming a -> Just a
---     _ -> Nothing
---   in Signal.filterMap f ("", []) actionSignal
-
-
--- port endStreaming : Signal (String, List PeerId)
--- port endStreaming =
---   let f action = case action of
---     EndStreaming a -> Just a
---     _ -> Nothing
---   in Signal.filterMap f ("", []) actionSignal
-
-
 port runRTC : Signal (Task () ())
 port runRTC =
   let f action = case action of
-    StartStreaming (mediaType, peers) -> WebRTC.startStreaming mediaType peers
-    EndStreaming (mediaType, peers) -> WebRTC.endStreaming mediaType
-    WSAction (type_, peerId, Just (WSJoin user)) -> WebRTC.beforeJoin peerId
-    WSAction (type_, peerId, Just WSLeave) -> WebRTC.beforeLeave peerId
+    RTCAction x -> WebRTC.doTask x
     _ -> Task.succeed ()
   in Signal.map f actionSignal
 
-port runRTC' : Signal (Task () ())
-port runRTC' = Signal.map WS.send WebRTC.requests
 
 port requestFullScreen : Signal (Task () ())
 port requestFullScreen =
@@ -187,34 +125,6 @@ port requestFullScreen =
     _ -> Nothing
   in Signal.filterMap f (VideoControl.requestFullScreen "") actionSignal
 
-
--- input
-
--- port setVideoUrl : Signal (Connection, Maybe String)
-
-setVideoUrl = WebRTC.onRemoteVideoURL
-videoUrlList' : Signal (Dict Connection String)
-videoUrlList' =
-  let f (conn, maybeUrl) dict = case maybeUrl of
-    Just url -> Dict.insert conn url dict
-    Nothing -> Dict.remove conn dict
-  in foldp f Dict.empty setVideoUrl
-
--- port setLocalVideoUrl : Signal (String, Maybe String)
-
-setLocalVideoUrl : Signal (String, Maybe String)
-setLocalVideoUrl = WebRTC.onLocalVideoURL
-localVideoUrlList' : Signal (Dict String String)
-localVideoUrlList' =
-  let f (mediaType, maybeUrl) dict = case log "maybeUrl" maybeUrl of
-    Just url -> Dict.insert mediaType url dict
-    Nothing -> Dict.remove mediaType dict
-  in foldp f Dict.empty setLocalVideoUrl
-
--- port addConnection : Signal Connection
--- port removeConnection : Signal Connection
-addConnection = WebRTC.onAddConnection
-removeConnection = WebRTC.onRemoveConnection
 
 -- Signals
 
@@ -234,7 +144,7 @@ context : Signal Context
 context = Signal.foldp update initialContext updateActionSignal
 
 userOf : Context -> PeerId -> User
-userOf c peerId = case Dict.get peerId c.users of
+userOf c peerId = case Dict.get peerId c.rtc.users of
   Just user -> user
   Nothing -> { name="", email="" }
 
@@ -246,18 +156,9 @@ wsMessageDecoder = Json.object3 (\t f d -> (t, f, Json.Encode.encode 0 d))
 
 wsMessageBodyDecoder : String -> Maybe (Json.Decoder WsMessageBody)
 wsMessageBodyDecoder type_ = case type_ of
-  "join" -> Just wsMessageJoinDecoder
-  "leave" -> Just wsMessageLeaveDecoder
   "message" -> Just wsMessageChatMessageDecoder
   _ -> Nothing
 
-wsMessageJoinDecoder : Json.Decoder WsMessageBody
-wsMessageJoinDecoder =
-  let userDecoder = Json.object3 (,,) ("id" := Json.string) ("name" := Json.string) ("email" := Json.string)
-  in Json.object1 (\(id, name, email) -> WSJoin {name= name, email= email}) ("user" := userDecoder)
-
-wsMessageLeaveDecoder : Json.Decoder WsMessageBody
-wsMessageLeaveDecoder = Json.null WSLeave
 
 wsMessageChatMessageDecoder : Json.Decoder WsMessageBody
 wsMessageChatMessageDecoder = Json.object2 (\mes time -> WSChatMessage mes time)
@@ -267,18 +168,13 @@ wsMessageChatMessageDecoder = Json.object2 (\mes time -> WSChatMessage mes time)
 -- Actions
 type Action
   = NoOp
-  | CloseWindow Connection
   | InitRoom API.InitialData
-  | RemovePeer String
-  | AddConnection Connection
-  | RemoveConnection Connection
-  | UpdateVideoUrls (Dict Connection String)
-  | UpdateLocalVideoUrls (Dict String String)
+  | RTCAction WebRTC.Action
   | ChatViewAction ChatView.Action
-  | FullScreen String
+  | WSAction WSMessage
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
-  | WSAction WSMessage
+  | FullScreen String
 
 -- input
 actions : Signal.Mailbox Action
@@ -289,25 +185,17 @@ actionSignal : Signal Action
 actionSignal = Signal.mergeMany [
   actions.signal
   , WSAction <~ constructedWsMessage
-  , UpdateVideoUrls <~ videoUrlList'
-  , UpdateLocalVideoUrls <~ localVideoUrlList'
-  , AddConnection <~ addConnection
-  , RemoveConnection <~ removeConnection
+  , RTCAction <~ rtcMessage
   ]
-
-
-
-
-
 
 
 update : Action -> Context -> Context
 update action context =
     case log "action" action of
       NoOp -> context
-      CloseWindow target ->
+      RTCAction event ->
         { context |
-          connections <- Set.remove target context.connections
+          rtc <- WebRTC.update event context.rtc
         }
       InitRoom initial ->
         let chat = context.chat
@@ -316,30 +204,14 @@ update action context =
             }
         in { context |
           roomName <- initial.room.id,
-          peers <- Set.fromList initial.room.peers,
-          users <- Dict.fromList(initial.room.users),
-          me <- initial.user,
+          rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
           chat <- newChat
         }
-      RemovePeer target ->
-        { context |
-          peers <- Set.remove target context.peers
+      StartStreaming a -> { context |
+          rtc <- WebRTC.update (WebRTC.StartStreaming a) context.rtc
         }
-      AddConnection conn ->
-        { context |
-          connections <- Set.insert conn context.connections
-        }
-      RemoveConnection conn ->
-        { context |
-          connections <- Set.remove conn context.connections
-        }
-      UpdateVideoUrls videoUrls ->
-        { context |
-          videoUrls <- videoUrls
-        }
-      UpdateLocalVideoUrls videoUrls ->
-        { context |
-          localVideoUrls <- videoUrls
+      EndStreaming a -> { context |
+          rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
         }
       ChatViewAction action ->
         { context |
@@ -352,16 +224,6 @@ update action context =
         in { context1 |
             chat <- ChatView.update (ChatView.UpdateField "") context1.chat
           }
-      WSAction (type_, peerId, Just (WSJoin user)) ->
-        { context |
-          peers <- Set.insert peerId context.peers,
-          users <- Dict.insert peerId user context.users
-        }
-      WSAction (type_, peerId, Just (WSLeave)) ->
-        { context |
-          peers <- Set.remove peerId context.peers,
-          users <- Dict.remove peerId context.users
-        }
       _ -> context
 
 -- Views
@@ -377,7 +239,7 @@ fullscreenButton address videoURL = div [
 windowCloseButton : Context -> String -> Html
 windowCloseButton c mediaType = div [
       class "btn pull-right",
-      onClick c.address (EndStreaming (mediaType, (Set.toList c.peers)))
+      onClick c.address (EndStreaming (mediaType, (Set.toList c.rtc.peers)))
     ] [
       div [class "glyphicon glyphicon-remove"] []
     ]
@@ -392,7 +254,7 @@ windowHeader title buttons =
 view : Context -> Html
 view c =
   div [] [
-    Header.header {user= {name=c.me.name}},
+    Header.header {user= {name=c.rtc.me.name}},
     div [class "container"] [
       statusView c,
       mainView c,
@@ -423,24 +285,24 @@ madiaButton c mediaType =
         "video" -> "fa fa-video-camera"
         "mic" -> "fa fa-microphone"
         "screen" -> "fa fa-desktop"
-      streaming = case Dict.get mediaType c.localVideoUrls of
+      streaming = case Dict.get mediaType c.rtc.localVideoUrls of
         Just _ -> True
         Nothing -> False
       face = if streaming then "btn-primary" else "btn-default"
       action = if streaming then EndStreaming (mediaType, peers) else StartStreaming (mediaType, peers)
-      peers = Set.toList c.peers
+      peers = Set.toList c.rtc.peers
   in button [
     Html.Attributes.type' "button",
     class ("btn " ++ face),
     onClick c.address action
   ] [madiaIcon mediaType]
 
-mediaButtons : Signal.Address Action -> Context -> Html
+mediaButtons : Address Action -> Context -> Html
 mediaButtons address c = div [
     Html.Attributes.attribute "role" "group", class "btn-group"
   ] (List.map (madiaButton c) mediaTypes)
 
-peerView : Signal.Address Action -> Context -> PeerId -> Html
+peerView : Address Action -> Context -> PeerId -> Html
 peerView address c peer =
   let user = userOf c peer
   in li [] [
@@ -451,7 +313,7 @@ peerView address c peer =
     ]
   ]
 
-peerViews : Signal.Address Action -> Context -> List PeerId -> Html
+peerViews : Address Action -> Context -> List PeerId -> Html
 peerViews address c peers = ul [
     class "user-list list-unstyled hidden-xs"
   ] (List.map (\peer -> peerView address c peer) peers)
@@ -462,7 +324,7 @@ statusView c = div [class "col-sm-3 col-md-3"] [
       div [class "panel-body"] [
         roomTitle c,
         mediaButtons c.address c,
-        peerViews c.address c (Set.toList c.peers)
+        peerViews c.address c (Set.toList c.rtc.peers)
       ]
     ]
   ]
@@ -473,7 +335,7 @@ mainView c = div [class "col-sm-9 col-md-9"] [div [class "row"] (mediaViews c)]
 mediaViews : Context -> List Html
 mediaViews c =
   let localList = List.map (\mediaType -> localMediaWindowView c.address c mediaType) ["video", "screen"]
-      remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) (Set.toList c.connections)
+      remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) (Set.toList c.rtc.connections)
       both = List.concat [localList, remoteList]
       filterd = List.filter (\maybe -> case maybe of
           Just a -> True
@@ -481,18 +343,18 @@ mediaViews c =
         ) both
   in List.map (\(Just a) -> a) filterd
 
-localMediaWindowView : Signal.Address Action -> Context -> String -> Maybe Html
+localMediaWindowView : Address Action -> Context -> String -> Maybe Html
 localMediaWindowView address c mediaType =
   let title = "Local " ++ mediaType
-      maybeVideoUrl = Dict.get mediaType c.localVideoUrls
+      maybeVideoUrl = Dict.get mediaType c.rtc.localVideoUrls
   in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl True) maybeVideoUrl
 
-remoteMediaWindowView : Signal.Address Action -> Context -> Connection -> Maybe Html
+remoteMediaWindowView : Address Action -> Context -> Connection -> Maybe Html
 remoteMediaWindowView address c connection =
   let (peerId, mediaType) = connection
       user = userOf c peerId
       title = String.concat [user.name, "'s ", mediaType, " view."]
-      maybeVideoUrl = Dict.get connection c.videoUrls
+      maybeVideoUrl = Dict.get connection c.rtc.videoUrls
   in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
 
 mediaWindowView : Context -> String -> String -> String -> Bool -> Html
