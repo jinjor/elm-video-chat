@@ -67,7 +67,7 @@ init = {
 
 
 update : Action -> Model -> Model
-update event model = case event of
+update action model = case log "WebRTC.update" action of
   CloseWindow target ->
     { model |
       connections <- Set.remove target model.connections
@@ -112,6 +112,7 @@ update event model = case event of
       peers <- Set.remove peerId model.peers,
       users <- Dict.remove peerId model.users
     }
+  _ -> model
 
 encode : Action -> String
 encode action = Json.Encode.encode 0 (encoder action)
@@ -140,8 +141,8 @@ actions rawJsonSignal = Signal.mergeMany [
   ]
 
 decode : String -> Action
-decode s = case Json.decodeString decoder s of
-  Ok decoded -> decoded
+decode s = case Json.decodeString decoder (log "WebRTC.decode" s) of
+  Ok decoded -> (log "WebRTC decoded" decoded)
   Err s -> Undefined
 
 convertToAction : String -> PeerId -> String -> Action
@@ -152,7 +153,7 @@ convertToAction type_ from data_ =
      | type_ == "answerCandidate" -> AnswerCandidate from data_
      | type_ == "endStream" -> EndStream from data_
      | type_ == "join" -> case Json.decodeString joinDecoder data_ of
-                            Ok x -> Join from x
+                            Ok x -> Join from <| log "join" x
                             _ -> Undefined
      | type_ == "leave" -> Leave from
      | otherwise -> Undefined

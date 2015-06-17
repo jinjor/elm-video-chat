@@ -55,6 +55,8 @@ fetchRoom roomId = (API.getInitialData roomId)
 port clientId : String
 port roomName : String
 
+
+-- TODO fix timing
 port initRoom : Signal (Task () ())
 port initRoom =
   let f x = case x of
