@@ -212,7 +212,6 @@ closeRemoteStream : String -> Json.Encode.Value -> Task String ()
 closeRemoteStream = Native.WebRTC.closeRemoteStream
 
 
-
 --
 
 startStreaming : MediaType -> List PeerId -> Task String ()
