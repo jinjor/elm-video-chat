@@ -28,16 +28,20 @@ import Debug exposing (log)
 
 -- Models
 
-type alias Context = { roomName:String
-                      , address: Signal.Address Action
-                      , rtc : WebRTC.Model
-                      , chat: ChatView.Model}
+type alias Context = {
+    selfPeerId: PeerId
+    , roomName: String
+    , address: Signal.Address Action
+    , rtc : WebRTC.Model
+    , chat: ChatView.Model
+  }
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 
 mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
-initialContext = { roomName = "　"
+initialContext = { selfPeerId = ""
+  , roomName = ""
   , address = actions.address
   , rtc = WebRTC.init
   , chat = ChatView.init }
@@ -47,57 +51,49 @@ nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}
 
 -- Data access
 
-fetchRoom : String -> Task err ()
+fetchRoom : String -> Task () API.InitialData
 fetchRoom roomId = (API.getInitialData roomId)
-    `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
-    `onError` (\err -> log "err" (succeed ()))
+    `onError` (\err -> log "err" (fail ()))
 
-port clientId : String
-port roomName : String
+initialize : String -> Task () ()
+initialize roomName = Task.map2 (\initial _ -> initial) (fetchRoom roomName) (WS.connect "wss://localhost:9999/ws")
+  `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
 
+port runner : Signal (PeerId, String)
 
-port updateRoom : Signal String
-
-port runner : Signal (Task err ())
-port runner = Signal.map fetchRoom updateRoom
-
-port websocketRunner : Signal ()
-
-port websocketRunner' : Signal (Task () ())
-port websocketRunner' = Signal.map (\_ -> WS.connect "wss://localhost:9999/ws") websocketRunner
-
+port taskRunner : Signal (Task () ())
+port taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName)) `andThen` (\_ -> initialize roomName)) runner
 
 port runTasks : Signal (Task () ())
 port runTasks =
-  let f action opened = (case log "runTasks" (opened, action) of
-      (True, InitRoom initial) -> WS.send joinToJson
-      (_, RTCAction (WebRTC.Request x)) -> WS.send (signalToJson x)
-      (_, RTCAction x) -> WebRTC.doTask x
-      (_, ChatAction (ChatView.Send x)) -> WS.send (messageToJson x 0) -- TODO
-      (_, FullScreen x) -> VideoControl.requestFullScreen x
-      (_, StartStreaming x) -> WebRTC.doTask <| WebRTC.StartStreaming x
-      (_, EndStreaming x) -> WebRTC.doTask <| WebRTC.EndStreaming x
+  let f (time, action) c = case log "runTasks" action of
+      InitRoom initial -> WS.send <| joinToJson c.selfPeerId c.roomName
+      RTCAction (WebRTC.Request x) -> WS.send <| signalToJson c.selfPeerId c.roomName x
+      RTCAction x -> WebRTC.doTask x
+      ChatAction (ChatView.Send x) -> WS.send <| messageToJson c.selfPeerId c.roomName x time
+      FullScreen x -> VideoControl.requestFullScreen x
+      StartStreaming x -> WebRTC.doTask <| WebRTC.StartStreaming x
+      EndStreaming x -> WebRTC.doTask <| WebRTC.EndStreaming x
       _ -> Task.succeed ()
-    )
-  in Signal.map2 f actionSignal WS.opened
+  in Signal.map2 f (Time.timestamp actionSignal) context
 
 
-signalToJson : (String, String, String) -> String
-signalToJson (type_, to, data_) =
+signalToJson : String -> String -> (String, String, String) -> String
+signalToJson selfId roomName (type_, to, data_) =
   let value = Json.Encode.object [
     ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string clientId),
+    ("from", Json.Encode.string selfId),
     ("to", Json.Encode.string to),
     ("type", Json.Encode.string type_),
     ("data", Json.Encode.string data_)
   ]
   in Json.Encode.encode 0 value
 
-messageToJson : String -> Time -> String
-messageToJson mes time =
+messageToJson : String -> String -> String -> Time -> String
+messageToJson selfId roomName mes time =
   let value = Json.Encode.object [
     ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string clientId),
+    ("from", Json.Encode.string selfId),
     ("type", Json.Encode.string "message"),
     ("data", Json.Encode.object [
       ("message", Json.Encode.string mes),
@@ -106,11 +102,11 @@ messageToJson mes time =
   ]
   in Json.Encode.encode 0 value
 
-joinToJson : String
-joinToJson =
+joinToJson : String -> String -> String
+joinToJson selfId roomName =
   let value = Json.Encode.object [
     ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string clientId),
+    ("from", Json.Encode.string selfId),
     ("type", Json.Encode.string "join")
   ]
   in Json.Encode.encode 0 value
@@ -149,6 +145,7 @@ type Action
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
   | ChatMessage PeerId String Time
+  | Init PeerId String
   | InitRoom API.InitialData
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
@@ -182,9 +179,13 @@ update action context =
         { context |
           rtc <- WebRTC.update event context.rtc
         }
+      Init selfPeerId roomName ->
+        { context |
+          selfPeerId <- selfPeerId,
+          roomName <- roomName
+        }
       InitRoom initial ->
         { context |
-          roomName <- initial.room.id,
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
           chat <- ChatView.update (ChatView.MyName initial.user.name) context.chat
         }

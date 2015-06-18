@@ -18,6 +18,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
         connection = new WebSocket(url, ['soap', 'xmpp']);
         connection.onopen = function() {
           localRuntime.notify(opened.id, true);
+          callback(Task.succeed());
         };
         connection.onclose = function() {
           localRuntime.notify(opened.id, false);
@@ -25,7 +26,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
         connection.onmessage = function(e) {
           localRuntime.notify(message.id, e.data);
         };
-        callback(Task.succeed());
+
       });
     };
 

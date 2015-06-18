@@ -18,13 +18,8 @@ var clientId = window.clientId || uuid();//TODO
     return roomId;
   }
 
-  //--------------
-
   var roomSignal = Elm.fullscreen(Elm.Main, {
-    clientId: clientId,
-    roomName: getRoom(),
-    updateRoom: getRoom(),
-    websocketRunner: []
+    runner: [clientId, getRoom()]
   });
 
 
