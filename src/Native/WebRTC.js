@@ -32,12 +32,7 @@ var clientId = window.clientId || uuid();//TODO
     var Task = Elm.Native.Task.make(localRuntime);
     var Utils = Elm.Native.Utils.make(localRuntime);
     var NS = Elm.Native.Signal.make(localRuntime);
-    var initialRequest = {
-      type: "",
-      from: "",
-      data: {}
-    };
-    var requests = NS.input('WebRTC.requests', JSON.stringify(initialRequest));
+    var requests = NS.input('WebRTC.requests', Tuple3("", "", ""));
     var _onLocalVideoURL = NS.input('WebRTC.onLocalVideoURL', Utils.Tuple2("", ""));
     var _onRemoteVideoURL = NS.input('WebRTC.onRemoteVideoURL', Utils.Tuple2(Utils.Tuple2("", ""), ""));
     var _onAddConnection = NS.input('WebRTC.onAddConnection',  Utils.Tuple2("", ""));
@@ -50,17 +45,15 @@ var clientId = window.clientId || uuid();//TODO
     });
     var room = getRoom();
 
-
     var send = function(data) {
       data.room = room;
       data.from = clientId;
       setTimeout(function(){
-        localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
+        localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", data.data));
       });
     };
 
-    var _answerSDP = function(from, dataString) {
-      var data = JSON.parse(dataString);
+    var _answerSDP = function(from, data) {
       return Task.asyncFunction(function(callback) {
         answerSDP(clientId, cm, send, {
           from: from,
@@ -81,8 +74,7 @@ var clientId = window.clientId || uuid();//TODO
         callback(Task.succeed());
       });
     };
-    var _acceptAnswer = function(from, dataString) {
-      var data = JSON.parse(dataString);
+    var _acceptAnswer = function(from, data) {
       return Task.asyncFunction(function(callback) {
         acceptAnswer(clientId, cm, send, {
           from: from,
@@ -91,8 +83,7 @@ var clientId = window.clientId || uuid();//TODO
         callback(Task.succeed());
       });
     };
-    var _addCandidate = function(from, dataString) {
-      var data = JSON.parse(dataString);
+    var _addCandidate = function(from, data) {
       return Task.asyncFunction(function(callback) {
         addCandidate(clientId, cm, send, {
           from: from,
@@ -101,8 +92,7 @@ var clientId = window.clientId || uuid();//TODO
         callback(Task.succeed());
       });
     };
-    var _closeRemoteStream = function(from, dataString) {
-      var data = JSON.parse(dataString);
+    var _closeRemoteStream = function(from, data) {
       return Task.asyncFunction(function(callback) {
         closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
           setTimeout(function(){
@@ -250,8 +240,6 @@ var clientId = window.clientId || uuid();//TODO
 
       }, onerror);
     }
-
-
 
   }
 

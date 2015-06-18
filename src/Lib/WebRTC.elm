@@ -1,4 +1,4 @@
-module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode) where
+module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode, Error) where
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -30,7 +30,7 @@ type Action =
   | RemovePeer String
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
-  | Request (String, String, String)
+  | Request (String, String, Json.Encode.Value)
   | OfferSDP String Json.Encode.Value
   | AnswerSDP String Json.Encode.Value
   | OfferCandidate String Json.Encode.Value
@@ -51,6 +51,9 @@ type alias Model = {
     , localAudio: Bool
     , localScreen: Bool
   }
+
+type Error = Error String
+
 
 init : Model
 init = {
@@ -174,8 +177,9 @@ joinDecoder =
 
 --
 
-requests : Signal (String, String, String)
+requests : Signal (String, String, Json.Encode.Value)
 requests = Native.WebRTC.requests
+
 
 onLocalVideoURL : Signal (MediaType, Maybe String)
 onLocalVideoURL =
@@ -195,44 +199,44 @@ onRemoveConnection = Native.WebRTC.onRemoveConnection
 
 --
 
-answerSDP : String -> Json.Encode.Value -> Task () ()
+answerSDP : String -> Json.Encode.Value -> Task String ()
 answerSDP = Native.WebRTC.answerSDP
 
-acceptAnswer : String -> Json.Encode.Value -> Task () ()
+acceptAnswer : String -> Json.Encode.Value -> Task String ()
 acceptAnswer = Native.WebRTC.acceptAnswer
 
-addCandidate : String -> Json.Encode.Value -> Task () ()
+addCandidate : String -> Json.Encode.Value -> Task String ()
 addCandidate = Native.WebRTC.addCandidate
 
-closeRemoteStream : String -> Json.Encode.Value -> Task () ()
+closeRemoteStream : String -> Json.Encode.Value -> Task String ()
 closeRemoteStream = Native.WebRTC.closeRemoteStream
 
 
 
 --
 
-startStreaming : MediaType -> List PeerId -> Task () ()
+startStreaming : MediaType -> List PeerId -> Task String ()
 startStreaming = Native.WebRTC.startStreaming
 
-endStreaming : MediaType -> Task () ()
+endStreaming : MediaType -> Task String ()
 endStreaming = Native.WebRTC.endStreaming
 
-beforeJoin : String -> Task () ()
+beforeJoin : String -> Task String ()
 beforeJoin = Native.WebRTC.beforeJoin
 
-beforeLeave : String -> Task () ()
+beforeLeave : String -> Task String ()
 beforeLeave = Native.WebRTC.beforeLeave
 --
 
-doTask : Action -> Task () ()
+doTask : Action -> Task Error ()
 doTask action = case log "WebRTC.doTask" action of
-    OfferSDP from data_ -> answerSDP from data_
-    AnswerSDP from data_ -> acceptAnswer from data_
-    OfferCandidate from data_ -> addCandidate from data_
-    AnswerCandidate from data_ -> addCandidate from data_
-    EndStream from data_ -> closeRemoteStream from data_
-    StartStreaming (mediaType, peers) -> startStreaming mediaType peers
-    EndStreaming (mediaType, peers) -> endStreaming mediaType
-    Join peerId user -> beforeJoin peerId
-    Leave peerId -> beforeLeave peerId
+    OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
+    AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)
+    OfferCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
+    AnswerCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
+    EndStream from data_ -> closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
+    StartStreaming (mediaType, peers) -> startStreaming mediaType peers `onError` (\e -> fail <| Error e)
+    EndStreaming (mediaType, peers) -> endStreaming mediaType `onError` (\e -> fail <| Error e)
+    Join peerId user -> beforeJoin peerId `onError` (\e -> fail <| Error e)
+    Leave peerId -> beforeLeave peerId `onError` (\e -> fail <| Error e)
     _ -> Task.succeed ()

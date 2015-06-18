@@ -7,6 +7,7 @@ import Task exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (..)
+import Http
 
 import Date exposing (Date)
 import Time exposing (Time, every, second)
@@ -51,41 +52,50 @@ nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}
 
 -- Data access
 
-fetchRoom : String -> Task () API.InitialData
-fetchRoom roomId = (API.getInitialData roomId)
-    `onError` (\err -> log "err" (fail ()))
+type Error =
+    FetchError Http.Error
+  | WSError WS.Error
+  | InvalidAction Action
+  | RTCError WebRTC.Error
+  | VideoControlError
 
-initialize : String -> Task () ()
-initialize roomName = Task.map2 (\initial _ -> initial) (fetchRoom roomName) (WS.connect "wss://localhost:9999/ws")
+fetchRoom : String -> Task Error API.InitialData
+fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchError err)
+
+connectWebSocket : Task Error ()
+connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
+
+initialize : String -> Task Error ()
+initialize roomName = Task.map2 (\initial _ -> initial) (fetchRoom roomName) connectWebSocket
   `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
 
 port runner : Signal (PeerId, String)
 
-port taskRunner : Signal (Task () ())
+port taskRunner : Signal (Task Error ())
 port taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName)) `andThen` (\_ -> initialize roomName)) runner
 
-port runTasks : Signal (Task () ())
+port runTasks : Signal (Task Error ())
 port runTasks =
   let f (time, action) c = case log "runTasks" action of
-      InitRoom initial -> WS.send <| joinToJson c.selfPeerId c.roomName
-      RTCAction (WebRTC.Request x) -> WS.send <| signalToJson c.selfPeerId c.roomName x
-      RTCAction x -> WebRTC.doTask x
-      ChatAction (ChatView.Send x) -> WS.send <| messageToJson c.selfPeerId c.roomName x time
-      FullScreen x -> VideoControl.requestFullScreen x
-      StartStreaming x -> WebRTC.doTask <| WebRTC.StartStreaming x
-      EndStreaming x -> WebRTC.doTask <| WebRTC.EndStreaming x
+      InitRoom initial -> (WS.send <| joinToJson c.selfPeerId c.roomName) `onError` (\e -> fail <| WSError e)
+      RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
+      RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
+      ChatAction (ChatView.Send x) -> (WS.send <| messageToJson c.selfPeerId c.roomName x time) `onError` (\e -> fail <| WSError e)
+      FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
+      StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
+      EndStreaming x -> WebRTC.doTask (WebRTC.EndStreaming x) `onError` (\e -> fail <| RTCError e)
       _ -> Task.succeed ()
   in Signal.map2 f (Time.timestamp actionSignal) context
 
 
-signalToJson : String -> String -> (String, String, String) -> String
+signalToJson : String -> String -> (String, String, Json.Encode.Value) -> String
 signalToJson selfId roomName (type_, to, data_) =
   let value = Json.Encode.object [
     ("room", Json.Encode.string roomName),
     ("from", Json.Encode.string selfId),
     ("to", Json.Encode.string to),
     ("type", Json.Encode.string type_),
-    ("data", Json.Encode.string data_)
+    ("data", data_)
   ]
   in Json.Encode.encode 0 value
 
@@ -127,8 +137,6 @@ messageDecoder : Json.Decoder (String, Time)
 messageDecoder = Json.object2 (,)
   ("message" := Json.string)
   ("time" := Json.float)
-
--- Signals
 
 context : Signal Context
 context = Signal.foldp update initialContext actionSignal
