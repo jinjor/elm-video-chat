@@ -54,7 +54,9 @@ var clientId = window.clientId || uuid();//TODO
     var send = function(data) {
       data.room = room;
       data.from = clientId;
-      localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
+      setTimeout(function(){
+        localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
+      });
     };
 
     var _answerSDP = function(from, dataString) {
@@ -64,13 +66,17 @@ var clientId = window.clientId || uuid();//TODO
           from: from,
           data: data
         }, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+          setTimeout(function() {
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+          });
         }, function onAddConnection(from, mediaType) {
-          setTimeout(function(){
+          setTimeout(function() {
             localRuntime.notify(_onAddConnection.id, Utils.Tuple2(from, mediaType));
           });
         }, function onRemoveConnection(from, mediaType) {
-          localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
+          setTimeout(function() {
+            localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
+          });
         });
         callback(Task.succeed());
       });
@@ -98,26 +104,29 @@ var clientId = window.clientId || uuid();//TODO
     var _closeRemoteStream = function(from, dataString) {
       var data = JSON.parse(dataString);
       return Task.asyncFunction(function(callback) {
-        closeRemoteStream(cm, from, mediaType, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+        closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
+          setTimeout(function(){
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+          });
         });
         callback(Task.succeed());
       });
     };
-    var startStreaming = function(mediaType, peers) {
+    var _startStreaming = function(mediaType, peers) {
       peers = listToArray(peers);
       return Task.asyncFunction(function(callback) {
         offerSDP(clientId, cm, send, mediaType, peers, function onLocalVideoURL(mediaType, url) {
           console.log([mediaType, url]);
           localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, url));
         });
-
         callback(Task.succeed());
       });
     };
-    var endStreaming = function(mediaType) {
+    var _endStreaming = function(mediaType) {
       return Task.asyncFunction(function(callback) {
-        localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, null));
+        setTimeout(function() {
+          localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, ""));
+        });
         endStreaming(clientId, cm, send, mediaType);
         callback(Task.succeed());
       });
@@ -131,10 +140,7 @@ var clientId = window.clientId || uuid();//TODO
     var beforeLeave = function(peerId) {
       return Task.asyncFunction(function(callback) {
         leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
-          // if(!url) {
-          //   throw new Error("url is null: " + url);
-          // }
-          setTimeout(function(){
+          setTimeout(function() {
             localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
           });
         });
@@ -147,8 +153,8 @@ var clientId = window.clientId || uuid();//TODO
       acceptAnswer: F2(_acceptAnswer),
       addCandidate: F2(_addCandidate),
       closeRemoteStream: F2(_closeRemoteStream),
-      startStreaming: F2(startStreaming),
-      endStreaming: endStreaming,
+      startStreaming: F2(_startStreaming),
+      endStreaming: _endStreaming,
       beforeJoin: beforeJoin,
       beforeLeave: beforeLeave,
       requests: requests,

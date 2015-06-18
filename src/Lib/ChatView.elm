@@ -1,4 +1,4 @@
-module Lib.ChatView (Model, init, Action(..), update, view, decode) where
+module Lib.ChatView (Model, init, Action(..), update, view) where
 
 import Task exposing (..)
 
@@ -19,14 +19,13 @@ import Lib.PanelHeader exposing (..)
 -- Models
 
 type alias Name = String
-type alias PeerId = String
 type alias ChatMessage = (Name, String, Date)
 type Action =
     Open
   | Close
   | UpdateField String
   | Send String
-  | Message PeerId String Time
+  | Message Name String Time
   | MyName String
   | Undefined
 
@@ -57,8 +56,8 @@ update action model = case log "ChatView.action" action of
   Close -> { model |
     opened <- False
   }
-  Message peerId s time -> { model |
-    messages <- (peerId, s, Date.fromTime time) :: model.messages,
+  Message name s time -> { model |
+    messages <- (name, s, Date.fromTime time) :: model.messages,
     field <- "",
     noReadCount <- if model.opened then 0 else model.noReadCount + 1
   }
@@ -83,26 +82,6 @@ onEnter address =
 is13 : Int -> Result String ()
 is13 code =
   if code == 13 then Ok () else Err "not the right key code"
-
-
--- Actions
-
-decode : String -> Maybe Action
-decode s = case (Json.decodeString decoder s) of
-  Ok action -> Just action
-  _ -> Nothing
-
-decoder : Json.Decoder Action
-decoder = Json.object3 (\t f (mes, time) -> Message f mes time)
-    ("type" := Json.string)
-    ("from" := Json.string)
-    ("data" := messageDecoder)
-
-messageDecoder : Json.Decoder (String, Time)
-messageDecoder = Json.object2 (,)
-  ("message" := Json.string)
-  ("time" := Json.float)
-
 
 
 -- Views

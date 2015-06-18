@@ -115,6 +115,23 @@ joinToJson =
   ]
   in Json.Encode.encode 0 value
 
+
+decodeChatMessage : String -> Maybe (PeerId, String, Time)
+decodeChatMessage s = case (Json.decodeString chatMessagedecoder s) of
+  Ok mes -> Just mes
+  _ -> Nothing
+
+chatMessagedecoder : Json.Decoder (PeerId, String, Time)
+chatMessagedecoder = Json.object3 (\t f (mes, time) -> (f, mes, time))
+    ("type" := Json.string)
+    ("from" := Json.string)
+    ("data" := messageDecoder)
+
+messageDecoder : Json.Decoder (String, Time)
+messageDecoder = Json.object2 (,)
+  ("message" := Json.string)
+  ("time" := Json.float)
+
 -- Signals
 
 context : Signal Context
@@ -131,6 +148,7 @@ type Action
   = NoOp
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
+  | ChatMessage PeerId String Time
   | InitRoom API.InitialData
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
@@ -142,8 +160,8 @@ actions = Signal.mailbox NoOp
 decode : String -> Action
 decode s = case WebRTC.decode s of
   Just a -> RTCAction a
-  Nothing -> case ChatView.decode s of
-    Just a -> ChatAction a
+  Nothing -> case decodeChatMessage s of
+    Just (peerId, mes, time) -> ChatMessage peerId mes time
     Nothing -> NoOp
 
 
@@ -175,6 +193,9 @@ update action context =
         }
       EndStreaming a -> { context |
           rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
+        }
+      ChatMessage peerId s time -> { context |
+          chat <- ChatView.update (ChatView.Message (userOf context peerId).name s time) context.chat
         }
       ChatAction action ->
         { context |
