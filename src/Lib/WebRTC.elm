@@ -1,4 +1,4 @@
-module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode, Error) where
+module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode, Error, logError) where
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -116,6 +116,11 @@ update action model = case log "WebRTC.update" action of
       users <- Dict.remove peerId model.users
     }
   _ -> model
+
+logError : Error -> String
+logError e = case e of
+  Error mes -> mes
+
 
 encode : Action -> String
 encode action = Json.Encode.encode 0 (encoder action)

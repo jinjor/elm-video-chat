@@ -55,7 +55,6 @@ nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}
 type Error =
     FetchError Http.Error
   | WSError WS.Error
-  | InvalidAction Action
   | RTCError WebRTC.Error
   | VideoControlError
 
@@ -71,8 +70,19 @@ initialize roomName = Task.map2 (\initial _ -> initial) (fetchRoom roomName) con
 
 port runner : Signal (PeerId, String)
 
-port taskRunner : Signal (Task Error ())
-port taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName)) `andThen` (\_ -> initialize roomName)) runner
+taskRunner : Signal (Task Error ())
+taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName)) `andThen` (\_ -> initialize roomName)) runner
+
+port errorLogRunner : Signal (Task String ())
+port errorLogRunner = Signal.map (\task -> task `onError` (\e -> fail (log "error: " <| errorLog e))) taskRunner
+
+errorLog : Error -> String
+errorLog e = case e of
+  FetchError e -> "fetch error"
+  WSError e -> WS.logError e
+  RTCError e -> WebRTC.logError e
+  VideoControlError -> "VideoControlError"
+
 
 port runTasks : Signal (Task Error ())
 port runTasks =

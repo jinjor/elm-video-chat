@@ -21,4 +21,9 @@ send_ = Native.WebSocket.send
 send : String -> Task Error ()
 send mes = send_ mes `onError` (\s -> fail <| SendError s)
 
+logError : Error -> String
+logError e = case e of
+  ConnectionError mes -> mes
+  SendError mes -> mes
+
 type Error = ConnectionError String | SendError String
