@@ -13,6 +13,15 @@ var clientId = window.clientId || uuid();//TODO
 
 (function() {
 
+  function Tuple3(x,y,z) {
+		return {
+			ctor: "_Tuple3",
+			_0: x,
+			_1: y,
+      _2: z
+		};
+	}
+
   Elm.Native.WebRTC = {};
 
   Elm.Native.WebRTC.make = function(localRuntime) {
@@ -45,7 +54,7 @@ var clientId = window.clientId || uuid();//TODO
     var send = function(data) {
       data.room = room;
       data.from = clientId;
-      localRuntime.notify(requests.id, Utils.Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
+      localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", JSON.stringify(data.data)));
     };
 
     var _answerSDP = function(from, dataString) {
@@ -57,7 +66,9 @@ var clientId = window.clientId || uuid();//TODO
         }, function onRemoteVideoURL(from, mediaType, url) {
           localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
         }, function onAddConnection(from, mediaType) {
-          localRuntime.notify(_onAddConnection.id, Utils.Tuple2(from, mediaType));
+          setTimeout(function(){
+            localRuntime.notify(_onAddConnection.id, Utils.Tuple2(from, mediaType));
+          });
         }, function onRemoveConnection(from, mediaType) {
           localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
         });
@@ -120,7 +131,12 @@ var clientId = window.clientId || uuid();//TODO
     var beforeLeave = function(peerId) {
       return Task.asyncFunction(function(callback) {
         leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+          // if(!url) {
+          //   throw new Error("url is null: " + url);
+          // }
+          setTimeout(function(){
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+          });
         });
         callback(Task.succeed());
       });
@@ -377,7 +393,7 @@ var clientId = window.clientId || uuid();//TODO
     }
     pc.close();
     cm.removeConnection(remoteClientId);
-    onRemoteVideoURL(remoteClientId, mediaType, null);
+    onRemoteVideoURL(remoteClientId, mediaType, "");
   }
 
   function polyfill() {

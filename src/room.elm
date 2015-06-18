@@ -309,7 +309,7 @@ remoteMediaWindowView : Address Action -> Context -> Connection -> Maybe Html
 remoteMediaWindowView address c connection =
   let (peerId, mediaType) = connection
       user = userOf c peerId
-      title = String.concat [user.name, "'s ", mediaType, " view."]
+      title = String.concat [user.name]
       maybeVideoUrl = Dict.get connection c.rtc.videoUrls
   in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
 

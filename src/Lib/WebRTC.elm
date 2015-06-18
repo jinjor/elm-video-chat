@@ -31,11 +31,11 @@ type Action =
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | Request (String, String, String)
-  | OfferSDP String String
-  | AnswerSDP String String
-  | OfferCandidate String String
-  | AnswerCandidate String String
-  | EndStream String String
+  | OfferSDP String Json.Encode.Value
+  | AnswerSDP String Json.Encode.Value
+  | OfferCandidate String Json.Encode.Value
+  | AnswerCandidate String Json.Encode.Value
+  | EndStream String Json.Encode.Value
   | Join PeerId User
   | Leave PeerId
   | Undefined
@@ -117,6 +117,7 @@ update action model = case log "WebRTC.update" action of
 encode : Action -> String
 encode action = Json.Encode.encode 0 (encoder action)
 
+encoder : Action -> Json.Encode.Value
 encoder action =
   let (type_, from, data_) = case action of
     OfferSDP f d -> ("offerSDP", f, d)
@@ -127,7 +128,7 @@ encoder action =
   in Json.Encode.object
     [ ("type", Json.Encode.string type_)
     , ("from", Json.Encode.string from)
-    , ("data", Json.Encode.string data_)
+    , ("data", data_)
     ]
 
 actions : Signal Action
@@ -146,21 +147,21 @@ decode s = case Json.decodeString decoder (log "WebRTC.decode" s) of
     _ -> Just decoded
   Err s -> Nothing
 
-convertToAction : String -> PeerId -> String -> Action
+convertToAction : String -> PeerId -> Json.Encode.Value -> Action
 convertToAction type_ from data_ =
   if | type_ == "offerSDP" -> OfferSDP from data_
      | type_ == "answerSDP" -> AnswerSDP from data_
      | type_ == "offerCandidate" -> OfferCandidate from data_
      | type_ == "answerCandidate" -> AnswerCandidate from data_
      | type_ == "endStream" -> EndStream from data_
-     | type_ == "join" -> case Json.decodeString joinDecoder data_ of
+     | type_ == "join" -> case Json.decodeValue joinDecoder data_ of
                             Ok x -> Join from <| log "join" x
                             _ -> Undefined
      | type_ == "leave" -> Leave from
      | otherwise -> Undefined
 
 decoder : Json.Decoder Action
-decoder = Json.object3 (\t f d -> convertToAction t f (Json.Encode.encode 0 d))
+decoder = Json.object3 (\t f d -> convertToAction t f d)
     ("type" := Json.string)
     ("from" := Json.string)
     ("data" := Json.value)
@@ -194,16 +195,16 @@ onRemoveConnection = Native.WebRTC.onRemoveConnection
 
 --
 
-answerSDP : String -> String -> Task () ()
+answerSDP : String -> Json.Encode.Value -> Task () ()
 answerSDP = Native.WebRTC.answerSDP
 
-acceptAnswer : String -> String -> Task () ()
+acceptAnswer : String -> Json.Encode.Value -> Task () ()
 acceptAnswer = Native.WebRTC.acceptAnswer
 
-addCandidate : String -> String -> Task () ()
+addCandidate : String -> Json.Encode.Value -> Task () ()
 addCandidate = Native.WebRTC.addCandidate
 
-closeRemoteStream : String -> String -> Task () ()
+closeRemoteStream : String -> Json.Encode.Value -> Task () ()
 closeRemoteStream = Native.WebRTC.closeRemoteStream
 
 
