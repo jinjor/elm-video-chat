@@ -1,4 +1,4 @@
-module Lib.ChatView (Model, init, Action(..), update, view) where
+module Lib.ChatView (Model, init, Action(..), update, view, Error, afterUpdate) where
 
 import Task exposing (..)
 
@@ -16,18 +16,21 @@ import Time exposing (Time)
 
 import Lib.PanelHeader exposing (..)
 
+import Native.ChatView
+
 -- Models
 
 type alias Name = String
 type alias ChatMessage = (Name, String, Date)
-type Action =
-    Open
+type Action
+  = NoOp
+  | Open
   | Close
   | UpdateField String
   | Send String
   | Message Name String Time
   | MyName String
-  | Undefined
+  | ScrollDown
 
 type alias Model = {
   opened : Bool,
@@ -36,6 +39,8 @@ type alias Model = {
   noReadCount : Int,
   myName : String
 }
+
+type Error = Error String
 
 init : Model
 init = {
@@ -70,7 +75,19 @@ update action model = case log "ChatView.action" action of
   _ -> model
 
 
+afterUpdate : Action -> Task Error ()
+afterUpdate action = case action of
+  Open -> (focus "chat-input") `onError` (\s -> fail <| Error s)
+  ScrollDown -> scrollDown "message-area" `onError` (\s -> fail <| Error s)
+  _ -> Task.succeed ()
+
 -----
+
+focus : String -> Task String ()
+focus = Native.ChatView.focus
+
+scrollDown : String -> Task String ()
+scrollDown = Native.ChatView.scrollDown
 
 
 onEnter : Address () -> Attribute
@@ -105,10 +122,11 @@ chatTimeline model =
 
 chatInput : Address Action -> String -> Html
 chatInput address field = input [
+    id "chat-input",
     class "form-control",
     Html.Attributes.value field,
     on "input" targetValue (Signal.message address << UpdateField),
-    onEnter (forwardTo address (\_ -> Send field))
+    onEnter (forwardTo address (\_ -> if (field == "") then NoOp else (Send field)))
   ] []
 
 openedView : Address Action -> Model -> List Html
@@ -118,7 +136,7 @@ openedView address model =
       span [class "fa fa-comments"] [],
       text <| "Chat"
     ],
-    div [class "panel-body"] [
+    div [id "message-area", class "panel-body"] [
       chatTimeline model
     ],
     div [class "row"] [

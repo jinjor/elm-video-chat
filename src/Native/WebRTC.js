@@ -37,13 +37,13 @@
         iceServers: iceServers
       });
       return Task.asyncFunction(function(callback) {
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var send = function(data) {
       data.room = room;
       data.from = clientId;
-      setTimeout(function(){
+      setTimeout(function() {
         localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", data.data));
       });
     };
@@ -66,7 +66,7 @@
             localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
           });
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var _acceptAnswer = function(from, data) {
@@ -75,7 +75,7 @@
           from: from,
           data: data
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var _addCandidate = function(from, data) {
@@ -84,17 +84,17 @@
           from: from,
           data: data
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var _closeRemoteStream = function(from, data) {
       return Task.asyncFunction(function(callback) {
         closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
-          setTimeout(function(){
+          localRuntime.setTimeout(function(){
             localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
-          });
+          }, 0);
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var _startStreaming = function(mediaType, peers) {
@@ -104,32 +104,32 @@
           console.log([mediaType, url]);
           localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, url));
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var _endStreaming = function(mediaType) {
       return Task.asyncFunction(function(callback) {
-        setTimeout(function() {
+        slocalRuntime.etTimeout(function() {
           localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, ""));
-        });
+        }, 0);
         endStreaming(clientId, cm, send, mediaType);
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var beforeJoin = function(peerId) {
       return Task.asyncFunction(function(callback) {
         join(clientId, cm, send, peerId);
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
     var beforeLeave = function(peerId) {
       return Task.asyncFunction(function(callback) {
         leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
-          setTimeout(function() {
+          localRuntime.setTimeout(function() {
             localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
-          });
+          }, 0);
         });
-        callback(Task.succeed());
+        callback(Task.succeed(Utils.Tuple0));
       });
     };
 

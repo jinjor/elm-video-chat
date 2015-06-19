@@ -21,6 +21,10 @@ html, body {
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 	font-weight: bold;
 }
+.header-buttons {
+	margin-top: -5px;
+  margin-bottom: -5px;
+}
 .status-panel h2 {
 	margin-top: 10px;
 	margin-bottom: 15px;

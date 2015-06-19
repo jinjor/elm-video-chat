@@ -7,6 +7,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
     if (localRuntime.Native.WebSocket.values) return localRuntime.Native.WebSocket.values;
 
     var Task = Elm.Native.Task.make(localRuntime);
+    var Utils = Elm.Native.Utils.make(localRuntime);
     var NS = Elm.Native.Signal.make(localRuntime);
 
     var message = NS.input('WebSocket.message', '');
@@ -18,7 +19,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
         connection = new WebSocket(url, ['soap', 'xmpp']);
         connection.onopen = function() {
           localRuntime.notify(opened.id, true);
-          callback(Task.succeed());
+          callback(Task.succeed(Utils.Tuple0));
         };
         connection.onclose = function() {
           localRuntime.notify(opened.id, false);
@@ -34,9 +35,9 @@ Elm.Native.WebSocket.make = function(localRuntime) {
         console.log('send:' + s);
         if(connection) {
           connection.send(s);
-          callback(Task.succeed());
+          return callback(Task.succeed(Utils.Tuple0));
         } else {
-          callback(Task.fail());
+          return callback(Task.fail("send failed."));
         }
       });
     };

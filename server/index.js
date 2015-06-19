@@ -40,12 +40,13 @@ var loginCheck = function(req, res, next) {
     console.log('deleted sesstion');
     res.redirect('/');
   } else {
+    console.log(typeof req.session.user);
     if (req.session.user) {
       next();
     } else {
-      if(req.url === '/') {
+      // if(req.url === '/') {
         req.url = '/login.html';
-      }
+      // }
       staticRouter(req, res, next);
     }
   }

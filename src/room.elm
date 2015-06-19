@@ -52,6 +52,7 @@ initialContext = { selfPeerId = ""
 type Error
   = FetchError Http.Error
   | WSError WS.Error
+  | ChatViewError ChatView.Error
   | RTCError WebRTC.Error
   | VideoControlError
 
@@ -87,6 +88,7 @@ errorLog e = case e of
   WSError e -> WS.logError e
   RTCError e -> WebRTC.logError e
   VideoControlError -> "VideoControlError"
+  ChatViewError e -> "ChatViewError"
 
 
 port runTasks : Signal (Task Error ())
@@ -96,9 +98,11 @@ port runTasks =
       RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
       RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
       ChatAction (ChatView.Send x) -> (WS.send <| messageToJson c.selfPeerId c.roomName x time) `onError` (\e -> fail <| WSError e)
+      ChatAction x -> ChatView.afterUpdate x `onError` (\e -> fail <| ChatViewError e)
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
       StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
       EndStreaming x -> WebRTC.doTask (WebRTC.EndStreaming x) `onError` (\e -> fail <| RTCError e)
+      ChatMessage _ _ _ -> ChatView.afterUpdate ChatView.ScrollDown `onError` (\e -> fail <| ChatViewError e)
       _ -> Task.succeed ()
   in Signal.map2 f (Time.timestamp actionSignal) context
 
@@ -192,6 +196,21 @@ actionSignal = Signal.mergeMany [
   , RTCAction <~ WebRTC.actions
   ]
 
+-- updateMB : Mailbox Action
+-- updateMB = mailbox NoOp
+--
+-- port dispatchSignal : Signal (Task () ())
+-- port dispatchSignal =
+--   let f action =
+--
+--     Signal.send updateMB.address action
+--
+--
+--
+--   in Signal.map f actionSignal
+
+
+
 
 -- Update --
 
@@ -247,7 +266,7 @@ windowCloseButton c mediaType = div [
 
 windowHeader : String -> List Html -> Html
 windowHeader title buttons =
-  let buttonGroup = div [class "btn-group pull-right"] buttons
+  let buttonGroup = div [class "header-buttons btn-group pull-right"] buttons
   in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
 

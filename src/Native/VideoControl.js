@@ -7,6 +7,7 @@ Elm.Native.VideoControl.make = function(localRuntime) {
     if (localRuntime.Native.VideoControl.values) return localRuntime.Native.VideoControl.values;
 
     var Task = Elm.Native.Task.make(localRuntime);
+    var Utils = Elm.Native.Utils.make(localRuntime);
 
     var requestFullScreen = function(src) {
       return Task.asyncFunction(function(callback) {
@@ -20,7 +21,7 @@ Elm.Native.VideoControl.make = function(localRuntime) {
             video.webkitRequestFullScreen();
           }
         }
-        callback(Task.succeed());
+        return callback(Task.succeed(Utils.Tuple0));
       });
     };
 
