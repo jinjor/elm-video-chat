@@ -6,9 +6,12 @@ video {
 html, body {
 	height: 100%;
 }
-.login-body {
+.login-body > * {
+	height: 100%;
+	width: 100%;
 	display: flex;
 	align-items: center;
+	position: absolute;
 }
 .login-wrapper {
 	width: 100%;
