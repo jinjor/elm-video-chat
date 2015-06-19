@@ -43,7 +43,10 @@ var loginCheck = function(req, res, next) {
     if (req.session.user) {
       next();
     } else {
-      fs.createReadStream('public/login.html').pipe(res);
+      if(req.url === '/') {
+        req.url = '/login.html';
+      }
+      staticRouter(req, res, next);
     }
   }
 };
@@ -70,7 +73,6 @@ var wss = new WebSocketServer({
   }, function(req, res) {
     res.writeHead(200);
     res.end();
-    console.log('yey');
   }).listen(9999),
   path: "/ws"
 });

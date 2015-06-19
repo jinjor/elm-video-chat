@@ -3,6 +3,20 @@ video {
 	max-width: 100%;
 	height: auto;
 }
+html, body {
+	height: 100%;
+}
+.login-body {
+	display: flex;
+	align-items: center;
+}
+.login-wrapper {
+	width: 100%;
+}
+.login-submit {
+	width: 30%;
+}
+
 .room-name {
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 	font-weight: bold;

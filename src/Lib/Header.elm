@@ -22,15 +22,17 @@ header c = div [class "navbar navbar-default"] [
                 ]
               ],
               div [class "collapse navbar-collapse"] [
-                welcomeView c.user
+                welcomeView,
+                div [class "navbar-text navbar-right"] [
+                  text ("Hello, " ++ c.user.name)
+                ]
               ]
             ]
           ]
 
 
-welcomeView user = div [class "navbar-text navbar-right"] [
-                      text ("Hello, " ++ user.name),
-                      logoutButton
-                    ]
+welcomeView = div [class "navbar-text navbar-right"] [
+    logoutButton
+  ]
 
 logoutButton = a [class "navbar-link", href "/logout"] [text "Logout"]
