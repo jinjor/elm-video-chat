@@ -47,13 +47,10 @@ initialContext = { selfPeerId = ""
   , rtc = WebRTC.init
   , chat = ChatView.init }
 
-nullInitialData : API.InitialData
-nullInitialData = { room= {id="", peers=[], users= []}, user={name="", email=""}}
-
 -- Data access
 
-type Error =
-    FetchError Http.Error
+type Error
+  = FetchError Http.Error
   | WSError WS.Error
   | RTCError WebRTC.Error
   | VideoControlError
@@ -64,14 +61,22 @@ fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchE
 connectWebSocket : Task Error ()
 connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
 
-initialize : String -> Task Error ()
-initialize roomName = Task.map2 (\initial _ -> initial) (fetchRoom roomName) connectWebSocket
+initializeRTC : PeerId -> API.InitialData -> Task Error ()
+initializeRTC selfPeerId initial =
+  WebRTC.doTask (WebRTC.Initialize selfPeerId initial.iceServers)
+  `onError` (\e -> fail <| RTCError e)
+
+initialize : String -> String -> Task Error ()
+initialize selfPeerId roomName =
+  Task.map2 (\initial _ -> initial) (fetchRoom roomName) connectWebSocket
+  `andThen` (\initial -> Task.map (\_ -> initial) (initializeRTC selfPeerId initial))
   `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
 
 port runner : Signal (PeerId, String)
 
 taskRunner : Signal (Task Error ())
-taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName)) `andThen` (\_ -> initialize roomName)) runner
+taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName))
+  `andThen` (\_ -> initialize selfPeerId roomName)) runner
 
 port errorLogRunner : Signal (Task String ())
 port errorLogRunner = Signal.map (\task -> task `onError` (\e -> fail (log "error: " <| errorLog e))) taskRunner

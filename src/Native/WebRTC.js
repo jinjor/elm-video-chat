@@ -1,16 +1,3 @@
-function uuid() {
-  var uuid = "", i, random;
-  for (i = 0; i < 32; i++) {
-    random = Math.random() * 16 | 0;
-    if (i == 8 || i == 12 || i == 16 || i == 20) {
-      uuid += "-"
-    }
-    uuid += (i == 12 ? 4 : (i == 16 ? (random & 3 | 8) : random)).toString(16);
-  }
-  return uuid;
-}
-var clientId = window.clientId || uuid();//TODO
-
 (function() {
 
   function Tuple3(x,y,z) {
@@ -38,13 +25,21 @@ var clientId = window.clientId || uuid();//TODO
     var _onAddConnection = NS.input('WebRTC.onAddConnection',  Utils.Tuple2("", ""));
     var _onRemoveConnection = NS.input('WebRTC.onRemoveConnection',  Utils.Tuple2("", ""));
 
-    var cm = ceateConnectionManager({
-      iceServers: [{
-        url: 'stun:localhost:3478'
-      }]
-    });
-    var room = getRoom();
+    //TODO
+    var cm = null;
+    var clientId = null;
+    var room = getRoom();//TODO
 
+    var _initialize = function(_clientId, iceServers) {
+      iceServers = listToArray(iceServers);
+      clientId = _clientId;
+      cm = ceateConnectionManager({
+        iceServers: iceServers
+      });
+      return Task.asyncFunction(function(callback) {
+        callback(Task.succeed());
+      });
+    };
     var send = function(data) {
       data.room = room;
       data.from = clientId;
@@ -139,6 +134,7 @@ var clientId = window.clientId || uuid();//TODO
     };
 
     return localRuntime.Native.WebRTC.values = {
+      initialize: F2(_initialize),
       answerSDP: F2(_answerSDP),
       acceptAnswer: F2(_acceptAnswer),
       addCandidate: F2(_addCandidate),
@@ -354,7 +350,6 @@ var clientId = window.clientId || uuid();//TODO
     send({
       type: 'endStream',
       to: clientId,
-      mediaType: mediaType,
       data: {
         mediaType: mediaType
       }

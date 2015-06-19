@@ -1,6 +1,11 @@
 
 
 module.exports = function(app, staticRouter, storage, session, ws) {
+  var iceServers =  [{
+    url: 'stun:stun.l.google.com:19302'
+  }/*, {
+    url: 'stun:stun.anyfirewall.com:3478'
+  }*/];
   app.get('/room/:id', function(req, res, next) {
     var roomId = req.params.id;
     session.getRoom(roomId) || session.createRoom(roomId);
@@ -24,7 +29,8 @@ module.exports = function(app, staticRouter, storage, session, ws) {
             id: roomId,
             peers: clientIds,
             users: users
-          }
+          },
+          iceServers: iceServers
         });
       });
     } else {

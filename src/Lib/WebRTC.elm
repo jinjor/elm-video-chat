@@ -20,8 +20,9 @@ type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 type alias PeerId = String
 
-type Action =
-    LocalVideoUrl (MediaType, Maybe String)
+type Action
+  = Initialize PeerId (List Json.Encode.Value)
+  | LocalVideoUrl (MediaType, Maybe String)
   | RemoteVideoUrl (Connection, Maybe String)
   | AddConnection Connection
   | RemoveConnection Connection
@@ -204,6 +205,9 @@ onRemoveConnection = Native.WebRTC.onRemoveConnection
 
 --
 
+initialize : PeerId -> List Json.Encode.Value -> Task String ()
+initialize = Native.WebRTC.initialize
+
 answerSDP : String -> Json.Encode.Value -> Task String ()
 answerSDP = Native.WebRTC.answerSDP
 
@@ -234,13 +238,14 @@ beforeLeave = Native.WebRTC.beforeLeave
 
 doTask : Action -> Task Error ()
 doTask action = case log "WebRTC.doTask" action of
-    OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
-    AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)
-    OfferCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
-    AnswerCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
-    EndStream from data_ -> closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
-    StartStreaming (mediaType, peers) -> startStreaming mediaType peers `onError` (\e -> fail <| Error e)
-    EndStreaming (mediaType, peers) -> endStreaming mediaType `onError` (\e -> fail <| Error e)
-    Join peerId user -> beforeJoin peerId `onError` (\e -> fail <| Error e)
-    Leave peerId -> beforeLeave peerId `onError` (\e -> fail <| Error e)
-    _ -> Task.succeed ()
+  Initialize selfId iceServers -> initialize selfId iceServers `onError` (\e -> fail <| Error e)
+  OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
+  AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)
+  OfferCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
+  AnswerCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
+  EndStream from data_ -> closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
+  StartStreaming (mediaType, peers) -> startStreaming mediaType peers `onError` (\e -> fail <| Error e)
+  EndStreaming (mediaType, peers) -> endStreaming mediaType `onError` (\e -> fail <| Error e)
+  Join peerId user -> beforeJoin peerId `onError` (\e -> fail <| Error e)
+  Leave peerId -> beforeLeave peerId `onError` (\e -> fail <| Error e)
+  _ -> Task.succeed ()

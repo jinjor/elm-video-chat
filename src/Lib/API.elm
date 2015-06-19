@@ -14,14 +14,13 @@ import Signal exposing (..)
 import Debug exposing (log)
 
 -- Models
-type alias InitialData = { room: Room, user: User }
+type alias InitialData = { room: Room, user: User, iceServers: List Json.Encode.Value }
 type alias InitialRoomsData = { rooms: List Room, user: User }
 type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
 type alias User = { name:String, email:String }
 type alias PeerId = String
 
 -- Data access
-
 nocacheGet : Json.Decoder value -> String -> Task Http.Error value
 nocacheGet decoder url =
   let request = {
@@ -40,9 +39,10 @@ getRooms = nocacheGet initialRoomsDataDecoder "/api/rooms"
 
 
 initialDataDecoder : Json.Decoder InitialData
-initialDataDecoder = Json.object2 (\user room -> { user=user, room=room })
+initialDataDecoder = Json.object3 (\user room iceServers -> { user=user, room=room, iceServers=iceServers })
       ("user" := userDecoder)
       ("room" := roomDecoder)
+      ("iceServers" := Json.list Json.value)
 
 initialRoomsDataDecoder : Json.Decoder InitialRoomsData
 initialRoomsDataDecoder =
