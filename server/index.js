@@ -83,6 +83,7 @@ storage.addUser('bar@gmail.com', 'Bar', 'bar@gmail.com');
 
 
 var loginCheck = function(req, res, next) {
+  console.log("req.session.user:" + req.session.user)
   if (req.method === 'POST' && req.url === '/api/login') {
     var email = req.body.email;
     var password = req.body.password;
