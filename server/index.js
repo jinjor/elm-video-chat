@@ -124,6 +124,9 @@ var oauth2 = new oauth.OAuth2(_twitterConsumerKey,
 //     _twitterConsumerKey, _twitterConsumerSecret, "1.0A", "http://127.0.0.1:8080/sessions/callback", "HMAC-SHA1");
 
 
+app.get('/hello', function(req, res) {
+  res.send('hello.');
+});
 app.get('/oauth', function(req, res) {
   oauth2.getOAuthAccessToken(
       '',
