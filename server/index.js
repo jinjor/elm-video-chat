@@ -68,7 +68,7 @@ var app = express();
 var sessionHandler = session({
   name: 'elm-video-chat',
   secret: 'secret',
-  cookie: { secure: true }
+  // cookie: { secure: true }
 });
 app.use(sessionHandler);
 
