@@ -13,6 +13,9 @@ var uuid = require('uuid');
 var twitter = require('twitter');
 var oauth = require('oauth');
 var util = require('util');
+
+var port = process.env.PORT || 3000;
+
 // var passport = require('passport');
 // var TwitterStrategy = require('passport-twitter').Strategy;
 //
@@ -190,6 +193,8 @@ app.get('/oauth', function(req, res) {
 // });
 
 // setup REST
+
+
 rest(app, staticRouter, storage, globalSession);
 
 var server = https.createServer({
@@ -198,37 +203,35 @@ var server = https.createServer({
 }, app);
 
 // setup websocket
-var WebSocketServer = require('ws').Server;
-var wss = new WebSocketServer({
-  server: https.createServer({
-    key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-    cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
-  }, function(req, res) {
-    res.writeHead(200);
-    res.end();
-  }).listen(9999),
-  path: "/ws"
-});
-
-wss.on('connection', function(socket) {
-  var request = socket.upgradeReq;
-  var response = {writeHead: {}};
-  sessionHandler(request, response, function (err) {
-    var email = request.session.user;
-    storage.getUser(email).then(function(user) {
-      if (!authenticate(user)) {
-        console.log('auth failed');
-        socket.close();
-        return;
-      }
-      rtc(socket, storage, globalSession, user);
-      ws(socket, storage, globalSession, user);
-    });
-  });
-
-});
-
-
+// var WebSocketServer = require('ws').Server;
+// var wss = new WebSocketServer({
+//   server: https.createServer({
+//     key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+//     cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+//   }, function(req, res) {
+//     res.writeHead(200);
+//     res.end();
+//   }).listen(9999),
+//   path: "/ws"
+// });
+//
+// wss.on('connection', function(socket) {
+//   var request = socket.upgradeReq;
+//   var response = {writeHead: {}};
+//   sessionHandler(request, response, function (err) {
+//     var email = request.session.user;
+//     storage.getUser(email).then(function(user) {
+//       if (!authenticate(user)) {
+//         console.log('auth failed');
+//         socket.close();
+//         return;
+//       }
+//       rtc(socket, storage, globalSession, user);
+//       ws(socket, storage, globalSession, user);
+//     });
+//   });
+//
+// });
 
 // listen
-server.listen(3000);
+server.listen(port);
