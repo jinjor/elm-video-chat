@@ -5750,7 +5750,7 @@ Elm.Main.make = function (_elm) {
                case "video":
                return "fa fa-video-camera";}
             _U.badCase($moduleName,
-            "between lines 296 and 300");
+            "between lines 297 and 301");
          }();
          return A2($Html.i,
          _L.fromArray([$Html$Attributes.$class(classes)]),
@@ -5884,7 +5884,7 @@ Elm.Main.make = function (_elm) {
             {case "Just": return true;
                case "Nothing": return false;}
             _U.badCase($moduleName,
-            "between lines 308 and 311");
+            "between lines 309 and 312");
          }();
          var face = streaming ? "btn-primary" : "btn-default";
          var action = streaming ? EndStreaming({ctor: "_Tuple2"
@@ -5901,7 +5901,7 @@ Elm.Main.make = function (_elm) {
                case "video":
                return "fa fa-video-camera";}
             _U.badCase($moduleName,
-            "between lines 304 and 308");
+            "between lines 305 and 309");
          }();
          return A2($Html.button,
          _L.fromArray([$Html$Attributes.type$("button")
@@ -5953,7 +5953,7 @@ Elm.Main.make = function (_elm) {
                                    ,email: ""
                                    ,name: ""};}
          _U.badCase($moduleName,
-         "between lines 164 and 166");
+         "between lines 165 and 167");
       }();
    });
    var update = F2(function (action,
@@ -6098,7 +6098,7 @@ Elm.Main.make = function (_elm) {
                {case "Just": return true;
                   case "Nothing": return false;}
                _U.badCase($moduleName,
-               "between lines 360 and 363");
+               "between lines 361 and 364");
             }();
          },
          both);
@@ -6108,7 +6108,7 @@ Elm.Main.make = function (_elm) {
                switch (_v19.ctor)
                {case "Just": return _v19._0;}
                _U.badCase($moduleName,
-               "on line 364, column 29 to 30");
+               "on line 365, column 29 to 30");
             }();
          },
          filterd);
@@ -6143,7 +6143,7 @@ Elm.Main.make = function (_elm) {
                    ,_1: _v22._0
                    ,_2: _v22._1};}
          _U.badCase($moduleName,
-         "on line 150, column 57 to 69");
+         "on line 151, column 57 to 69");
       }();
    }),
    A2($Json$Decode._op[":="],
@@ -6186,10 +6186,10 @@ Elm.Main.make = function (_elm) {
                       break;
                     case "Nothing": return NoOp;}
                  _U.badCase($moduleName,
-                 "between lines 187 and 189");
+                 "between lines 188 and 190");
               }();}
          _U.badCase($moduleName,
-         "between lines 185 and 189");
+         "between lines 186 and 190");
       }();
    };
    var actionSignal = $Signal.mergeMany(_L.fromArray([actions.signal
@@ -6270,7 +6270,7 @@ Elm.Main.make = function (_elm) {
                  value);
               }();}
          _U.badCase($moduleName,
-         "between lines 112 and 119");
+         "between lines 113 and 120");
       }();
    });
    var errorLog = function (e) {
@@ -6287,7 +6287,7 @@ Elm.Main.make = function (_elm) {
             case "WSError":
             return $Lib$WebSocket.logError(e._0);}
          _U.badCase($moduleName,
-         "between lines 86 and 91");
+         "between lines 87 and 92");
       }();
    };
    var runner = Elm.Native.Port.make(_elm).inboundSignal("runner",
@@ -6324,7 +6324,7 @@ Elm.Main.make = function (_elm) {
              ,_0: a};
    };
    var connectWebSocket = A2($Task.onError,
-   $Lib$WebSocket.connect("wss://localhost:9999/ws"),
+   $Lib$WebSocket.connect("wss://vity2.herokuapp.com/ws"),
    function (e) {
       return $Task.fail(WSError(e));
    });
@@ -6385,7 +6385,7 @@ Elm.Main.make = function (_elm) {
                  }();
               });}
          _U.badCase($moduleName,
-         "between lines 79 and 80");
+         "between lines 80 and 81");
       }();
    },
    runner);
@@ -6489,7 +6489,7 @@ Elm.Main.make = function (_elm) {
                     return $Task.succeed({ctor: "_Tuple0"});
                  }();}
             _U.badCase($moduleName,
-            "between lines 96 and 107");
+            "between lines 97 and 108");
          }();
       });
       return A3($Signal.map2,

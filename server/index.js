@@ -209,35 +209,36 @@ rest(app, staticRouter, storage, globalSession);
 var server = require('http').createServer(app);
 
 // setup websocket
-// var WebSocketServer = require('ws').Server;
-// var wss = new WebSocketServer({
-//   server: https.createServer({
-//     key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-//     cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
-//   }, function(req, res) {
-//     res.writeHead(200);
-//     res.end();
-//   }).listen(9999),
-//   path: "/ws"
-// });
-//
-// wss.on('connection', function(socket) {
-//   var request = socket.upgradeReq;
-//   var response = {writeHead: {}};
-//   sessionHandler(request, response, function (err) {
-//     var email = request.session.user;
-//     storage.getUser(email).then(function(user) {
-//       if (!authenticate(user)) {
-//         console.log('auth failed');
-//         socket.close();
-//         return;
-//       }
-//       rtc(socket, storage, globalSession, user);
-//       ws(socket, storage, globalSession, user);
-//     });
-//   });
-//
-// });
+var WebSocketServer = require('ws').Server;
+var wss = new WebSocketServer({
+  // server: https.createServer({
+  //   key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+  //   cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+  // }, function(req, res) {
+  //   res.writeHead(200);
+  //   res.end();
+  // }).listen(9999),
+  server: server,
+  path: "/ws"
+});
+
+wss.on('connection', function(socket) {
+  var request = socket.upgradeReq;
+  var response = {writeHead: {}};
+  sessionHandler(request, response, function (err) {
+    var email = request.session.user;
+    storage.getUser(email).then(function(user) {
+      if (!authenticate(user)) {
+        console.log('auth failed');
+        socket.close();
+        return;
+      }
+      rtc(socket, storage, globalSession, user);
+      ws(socket, storage, globalSession, user);
+    });
+  });
+
+});
 
 // listen
 server.listen(port);

@@ -60,7 +60,8 @@ fetchRoom : String -> Task Error API.InitialData
 fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchError err)
 
 connectWebSocket : Task Error ()
-connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
+-- connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
+connectWebSocket = (WS.connect "wss://vity2.herokuapp.com/ws") `onError` (\e -> fail <| WSError e)
 
 initializeRTC : PeerId -> API.InitialData -> Task Error ()
 initializeRTC selfPeerId initial =
