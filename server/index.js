@@ -200,10 +200,12 @@ app.get('/oauth', function(req, res) {
 
 rest(app, staticRouter, storage, globalSession);
 
-var server = https.createServer({
-  key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-  cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
-}, app);
+// var server = https.createServer({
+//   key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+//   cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+// }, app);
+
+var server = require('http').createServer(app);
 
 // setup websocket
 // var WebSocketServer = require('ws').Server;
