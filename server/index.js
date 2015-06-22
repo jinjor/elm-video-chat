@@ -1,3 +1,4 @@
+var http = require('http');
 var https = require('https');
 var sockjs = require('sockjs');
 var express = require('express');
@@ -15,6 +16,7 @@ var oauth = require('oauth');
 var util = require('util');
 
 var port = process.env.PORT || 3000;
+var needsHttps = !process.env.PORT;
 
 // var passport = require('passport');
 // var TwitterStrategy = require('passport-twitter').Strategy;
@@ -91,7 +93,7 @@ var loginCheck = function(req, res, next) {
     res.redirect(req.header('referrer'));
   } else if (req.method === 'GET' && req.url === '/logout') {
     req.session.destroy();
-    console.log('deleted sesstion');
+    console.log('deleted session');
     res.redirect('/');
   } else {
     if (req.session.user) {
@@ -201,12 +203,17 @@ app.get('/oauth', function(req, res) {
 
 rest(app, staticRouter, storage, globalSession);
 
-// var server = https.createServer({
-//   key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-//   cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
-// }, app);
+var server = https.createServer({
+  key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+  cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+}, app);
 
-var server = require('http').createServer(app);
+var server = needsHttps ?
+  https.createServer({
+    key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+    cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+  }, app) :
+  http.createServer(app);
 
 // setup websocket
 var WebSocketServer = require('ws').Server;

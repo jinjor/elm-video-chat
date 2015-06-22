@@ -6291,13 +6291,15 @@ Elm.Main.make = function (_elm) {
       }();
    };
    var runner = Elm.Native.Port.make(_elm).inboundSignal("runner",
-   "(Lib.API.PeerId, String)",
+   "(Lib.API.PeerId, String, String)",
    function (v) {
-      return typeof v === "object" && v instanceof Array ? {ctor: "_Tuple2"
+      return typeof v === "object" && v instanceof Array ? {ctor: "_Tuple3"
                                                            ,_0: typeof v[0] === "string" || typeof v[0] === "object" && v[0] instanceof String ? v[0] : _U.badPort("a string",
                                                            v[0])
                                                            ,_1: typeof v[1] === "string" || typeof v[1] === "object" && v[1] instanceof String ? v[1] : _U.badPort("a string",
-                                                           v[1])} : _U.badPort("an array",
+                                                           v[1])
+                                                           ,_2: typeof v[2] === "string" || typeof v[2] === "object" && v[2] instanceof String ? v[2] : _U.badPort("a string",
+                                                           v[2])} : _U.badPort("an array",
       v);
    });
    var VideoControlError = {ctor: "VideoControlError"};
@@ -6323,11 +6325,13 @@ Elm.Main.make = function (_elm) {
       return {ctor: "WSError"
              ,_0: a};
    };
-   var connectWebSocket = A2($Task.onError,
-   $Lib$WebSocket.connect("wss://vity2.herokuapp.com/ws"),
-   function (e) {
-      return $Task.fail(WSError(e));
-   });
+   var connectWebSocket = function (url) {
+      return A2($Task.onError,
+      $Lib$WebSocket.connect(url),
+      function (e) {
+         return $Task.fail(WSError(e));
+      });
+   };
    var FetchError = function (a) {
       return {ctor: "FetchError"
              ,_0: a};
@@ -6339,8 +6343,9 @@ Elm.Main.make = function (_elm) {
          return $Task.fail(FetchError(err));
       });
    };
-   var initialize = F2(function (selfPeerId,
-   roomName) {
+   var initialize = F3(function (selfPeerId,
+   roomName,
+   wsURL) {
       return A2($Task.andThen,
       A2($Task.andThen,
       A3($Task.map2,
@@ -6350,7 +6355,7 @@ Elm.Main.make = function (_elm) {
          }();
       }),
       fetchRoom(roomName),
-      connectWebSocket),
+      connectWebSocket(wsURL)),
       function (initial) {
          return A2($Task.map,
          function (_v47) {
@@ -6372,16 +6377,17 @@ Elm.Main.make = function (_elm) {
    function (_v49) {
       return function () {
          switch (_v49.ctor)
-         {case "_Tuple2":
+         {case "_Tuple3":
             return A2($Task.andThen,
               A2($Signal.send,
               actions.address,
               A2(Init,_v49._0,_v49._1)),
-              function (_v53) {
+              function (_v54) {
                  return function () {
-                    return A2(initialize,
+                    return A3(initialize,
                     _v49._0,
-                    _v49._1);
+                    _v49._1,
+                    _v49._2);
                  }();
               });}
          _U.badCase($moduleName,
@@ -6411,30 +6417,30 @@ Elm.Main.make = function (_elm) {
    actionSignal);
    var runTasks = Elm.Native.Task.make(_elm).performSignal("runTasks",
    function () {
-      var f = F2(function (_v55,
+      var f = F2(function (_v56,
       c) {
          return function () {
-            switch (_v55.ctor)
+            switch (_v56.ctor)
             {case "_Tuple2":
                return function () {
-                    var _v59 = A2($Debug.log,
+                    var _v60 = A2($Debug.log,
                     "runTasks",
-                    _v55._1);
-                    switch (_v59.ctor)
+                    _v56._1);
+                    switch (_v60.ctor)
                     {case "ChatAction":
-                       switch (_v59._0.ctor)
+                       switch (_v60._0.ctor)
                          {case "Send":
                             return A2($Task.onError,
                               $Lib$WebSocket.send(A4(messageToJson,
                               c.selfPeerId,
                               c.roomName,
-                              _v59._0._0,
-                              _v55._0)),
+                              _v60._0._0,
+                              _v56._0)),
                               function (e) {
                                  return $Task.fail(WSError(e));
                               });}
                          return A2($Task.onError,
-                         $Lib$ChatView.afterUpdate(_v59._0),
+                         $Lib$ChatView.afterUpdate(_v60._0),
                          function (e) {
                             return $Task.fail(ChatViewError(e));
                          });
@@ -6446,13 +6452,13 @@ Elm.Main.make = function (_elm) {
                          });
                        case "EndStreaming":
                        return A2($Task.onError,
-                         $Lib$WebRTC.doTask($Lib$WebRTC.EndStreaming(_v59._0)),
+                         $Lib$WebRTC.doTask($Lib$WebRTC.EndStreaming(_v60._0)),
                          function (e) {
                             return $Task.fail(RTCError(e));
                          });
                        case "FullScreen":
                        return A2($Task.onError,
-                         $Lib$VideoControl.requestFullScreen(_v59._0),
+                         $Lib$VideoControl.requestFullScreen(_v60._0),
                          function (e) {
                             return $Task.fail(VideoControlError);
                          });
@@ -6465,24 +6471,24 @@ Elm.Main.make = function (_elm) {
                             return $Task.fail(WSError(e));
                          });
                        case "RTCAction":
-                       switch (_v59._0.ctor)
+                       switch (_v60._0.ctor)
                          {case "Request":
                             return A2($Task.onError,
                               $Lib$WebSocket.send(A3(signalToJson,
                               c.selfPeerId,
                               c.roomName,
-                              _v59._0._0)),
+                              _v60._0._0)),
                               function (e) {
                                  return $Task.fail(WSError(e));
                               });}
                          return A2($Task.onError,
-                         $Lib$WebRTC.doTask(_v59._0),
+                         $Lib$WebRTC.doTask(_v60._0),
                          function (e) {
                             return $Task.fail(RTCError(e));
                          });
                        case "StartStreaming":
                        return A2($Task.onError,
-                         $Lib$WebRTC.doTask($Lib$WebRTC.StartStreaming(_v59._0)),
+                         $Lib$WebRTC.doTask($Lib$WebRTC.StartStreaming(_v60._0)),
                          function (e) {
                             return $Task.fail(RTCError(e));
                          });}
@@ -13529,7 +13535,7 @@ var commonEvents = [
     Only one DOMDelegator should exist because we do not want
         duplicate event listeners bound to the DOM.
 
-    `Delegator` will also `listenTo()` all events unless
+    `Delegator` will also `listenTo()` all events unless 
         every caller opts out of it
 */
 module.exports = Delegator
@@ -13571,7 +13577,7 @@ function Delegator(opts) {
  * Safe for element IDs and server-side lookups.
  *
  * Extracted from CLCTR
- *
+ * 
  * Copyright (c) Eric Elliott 2012
  * MIT License
  */
@@ -13637,7 +13643,7 @@ function Delegator(opts) {
 
       counter = safeCounter().toString(36).slice(-4);
 
-    return date.slice(-2) +
+    return date.slice(-2) + 
       counter + print + random;
   };
 

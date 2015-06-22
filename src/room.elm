@@ -59,26 +59,26 @@ type Error
 fetchRoom : String -> Task Error API.InitialData
 fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchError err)
 
-connectWebSocket : Task Error ()
+connectWebSocket : String -> Task Error ()
 -- connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
-connectWebSocket = (WS.connect "wss://vity2.herokuapp.com/ws") `onError` (\e -> fail <| WSError e)
+connectWebSocket url = (WS.connect url) `onError` (\e -> fail <| WSError e)
 
 initializeRTC : PeerId -> API.InitialData -> Task Error ()
 initializeRTC selfPeerId initial =
   WebRTC.doTask (WebRTC.Initialize selfPeerId initial.iceServers)
   `onError` (\e -> fail <| RTCError e)
 
-initialize : String -> String -> Task Error ()
-initialize selfPeerId roomName =
-  Task.map2 (\initial _ -> initial) (fetchRoom roomName) connectWebSocket
+initialize : String -> String -> String -> Task Error ()
+initialize selfPeerId roomName wsURL =
+  Task.map2 (\initial _ -> initial) (fetchRoom roomName) (connectWebSocket wsURL)
   `andThen` (\initial -> Task.map (\_ -> initial) (initializeRTC selfPeerId initial))
   `andThen` (\initial -> (Signal.send actions.address (InitRoom initial)))
 
-port runner : Signal (PeerId, String)
+port runner : Signal (PeerId, String, String)
 
 taskRunner : Signal (Task Error ())
-taskRunner = Signal.map (\(selfPeerId, roomName) -> (Signal.send actions.address (Init selfPeerId roomName))
-  `andThen` (\_ -> initialize selfPeerId roomName)) runner
+taskRunner = Signal.map (\(selfPeerId, roomName, wsURL) -> (Signal.send actions.address (Init selfPeerId roomName))
+  `andThen` (\_ -> initialize selfPeerId roomName wsURL)) runner
 
 port errorLogRunner : Signal (Task String ())
 port errorLogRunner = Signal.map (\task -> task `onError` (\e -> fail (log "error: " <| errorLog e))) taskRunner

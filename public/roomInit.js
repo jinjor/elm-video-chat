@@ -18,9 +18,12 @@
     var roomId = decodeURI(location.href.split('/room/')[1].split('?')[0]);
     return roomId;
   }
+  function wsURL() {
+    return location.origin.split('https://').join('wss://') + '/ws';
+  }
 
   var roomSignal = Elm.fullscreen(Elm.Main, {
-    runner: [clientId, getRoom()]
+    runner: [clientId, getRoom(), wsURL()]
   });
 
 })();
