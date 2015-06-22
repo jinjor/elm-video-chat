@@ -109,7 +109,7 @@
     };
     var _endStreaming = function(mediaType) {
       return Task.asyncFunction(function(callback) {
-        slocalRuntime.etTimeout(function() {
+        localRuntime.setTimeout(function() {
           localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, ""));
         }, 0);
         endStreaming(clientId, cm, send, mediaType);
