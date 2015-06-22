@@ -5,3 +5,4 @@ public/login.js
 elm-stuff
 repl*
 npm-debug.log
+.openshift/**/*
