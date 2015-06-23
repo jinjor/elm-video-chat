@@ -29,7 +29,7 @@
   "main": "server/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "elm-make src/index.elm --output public/index.js && elm-make src/room.elm --output public/room.js",
+    "build": "elm-make src/index.elm --output public/index.js && elm-make src/room.elm --output public/room.js && elm-make src/login.elm --output public/login.js",
     "start": "node server/index",
     "watch": "npm run build & gulp watch"
   },
