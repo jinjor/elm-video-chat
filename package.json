@@ -14,9 +14,9 @@
   "author": {
     "name": "jinjor",
     "email": "jinjor@gmail.com",
-    "url": "http://www.openshift.com/"
+    "url": "https://github.com/jinjor"
   },
-  "homepage": "http://vity2-jinjor.rhcloud.com/",
+  "homepage": "https://vity2.herokuapp.com/",
   "repository": {
     "type": "git",
     "url": "https://github.com/jinjor/elm-video-chat/"
