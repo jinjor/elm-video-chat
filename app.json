@@ -1,8 +1,0 @@
-{
-    "name": "Video chat in Elm",
-    "repository": "https://github.com/jinjor/elm-video-chat",
-    "env": {
-        "BUILDPACK_URL": "https://github.com/srid/heroku-buildpack-elm.git",
-        "ELM_COMPILE": "elm-make src/index.elm --output public/index.js && elm-make src/room.elm --output public/room.js && elm-make src/login.elm --output public/login.js"
-    }
-}

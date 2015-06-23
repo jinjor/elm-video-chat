@@ -1,8 +1,8 @@
 {
     "version": "1.0.0",
     "summary": "elm video chat",
-    "repository": "https://github.com/evancz/elm-examples.git",
-    "license": "BSD3",
+    "repository": "https://github.com/jinjor/elm-video-chat.git",
+    "license": "MIT",
     "source-directories": [
         "src"
     ],
