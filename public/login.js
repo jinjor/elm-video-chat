@@ -11453,7 +11453,7 @@ var commonEvents = [
     Only one DOMDelegator should exist because we do not want
         duplicate event listeners bound to the DOM.
 
-    `Delegator` will also `listenTo()` all events unless 
+    `Delegator` will also `listenTo()` all events unless
         every caller opts out of it
 */
 module.exports = Delegator
@@ -11495,7 +11495,7 @@ function Delegator(opts) {
  * Safe for element IDs and server-side lookups.
  *
  * Extracted from CLCTR
- * 
+ *
  * Copyright (c) Eric Elliott 2012
  * MIT License
  */
@@ -11561,7 +11561,7 @@ function Delegator(opts) {
 
       counter = safeCounter().toString(36).slice(-4);
 
-    return date.slice(-2) + 
+    return date.slice(-2) +
       counter + print + random;
   };
 
