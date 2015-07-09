@@ -63,7 +63,7 @@ update action model = case log "ChatView.action" action of
   }
   Message name s time -> { model |
     messages <- (name, s, Date.fromTime time) :: model.messages,
-    field <- "",
+    field <- if model.myName == name then "" else model.field,
     noReadCount <- if model.opened then 0 else model.noReadCount + 1
   }
   UpdateField field -> { model |
