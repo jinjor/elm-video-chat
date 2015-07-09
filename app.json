@@ -1,0 +1,8 @@
+{
+    "name": "elm-video-chat",
+    "repository": "https://github.com/jinjor/elm-video-chat",
+    "env": {
+        "ELM_COMPILE": "npm run build",
+        "ELM_STATIC_DIR": "."
+    }
+}

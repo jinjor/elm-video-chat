@@ -16,6 +16,10 @@ Elm.Array.make = function (_elm) {
    $Native$Array = Elm.Native.Array.make(_elm);
    var append = $Native$Array.append;
    var length = $Native$Array.length;
+   var isEmpty = function (array) {
+      return _U.eq(length(array),
+      0);
+   };
    var slice = $Native$Array.slice;
    var set = $Native$Array.set;
    var get = F2(function (i,
@@ -72,6 +76,7 @@ Elm.Array.make = function (_elm) {
                        ,repeat: repeat
                        ,initialize: initialize
                        ,fromList: fromList
+                       ,isEmpty: isEmpty
                        ,length: length
                        ,push: push
                        ,append: append
@@ -503,7 +508,7 @@ Elm.Color.make = function (_elm) {
                         ,saturation: s};
               }();}
          _U.badCase($moduleName,
-         "between lines 114 and 121");
+         "between lines 114 and 118");
       }();
    };
    var HSLA = F4(function (a,
@@ -559,7 +564,7 @@ Elm.Color.make = function (_elm) {
                  color._3);
               }();}
          _U.badCase($moduleName,
-         "between lines 105 and 111");
+         "between lines 105 and 108");
       }();
    };
    var grayscale = function (p) {
@@ -839,7 +844,7 @@ Elm.Dict.make = function (_elm) {
               A3(foldr,f,acc,t._4)),
               t._3);}
          _U.badCase($moduleName,
-         "between lines 408 and 416");
+         "between lines 417 and 421");
       }();
    });
    var keys = function (dict) {
@@ -895,7 +900,7 @@ Elm.Dict.make = function (_elm) {
               A3(foldl,f,acc,dict._3)),
               dict._4);}
          _U.badCase($moduleName,
-         "between lines 397 and 405");
+         "between lines 406 and 410");
       }();
    });
    var isBBlack = function (dict) {
@@ -919,7 +924,7 @@ Elm.Dict.make = function (_elm) {
             case "Remove": return "Remove";
             case "Same": return "Same";}
          _U.badCase($moduleName,
-         "between lines 173 and 179");
+         "between lines 182 and 185");
       }();
    };
    var Same = {ctor: "Same"};
@@ -949,10 +954,10 @@ Elm.Dict.make = function (_elm) {
                       targetKey,
                       dict._3);}
                  _U.badCase($moduleName,
-                 "between lines 129 and 135");
+                 "between lines 129 and 132");
               }();}
          _U.badCase($moduleName,
-         "between lines 124 and 135");
+         "between lines 124 and 132");
       }();
    });
    var member = F2(function (key,
@@ -979,7 +984,7 @@ Elm.Dict.make = function (_elm) {
                         ,_1: dict._2};}
               return max(dict._4);}
          _U.badCase($moduleName,
-         "between lines 100 and 121");
+         "between lines 100 and 108");
       }();
    };
    var min = function (dict) {
@@ -1033,6 +1038,9 @@ Elm.Dict.make = function (_elm) {
    var LBBlack = {ctor: "LBBlack"};
    var LBlack = {ctor: "LBlack"};
    var empty = RBEmpty(LBlack);
+   var isEmpty = function (dict) {
+      return _U.eq(dict,empty);
+   };
    var map = F2(function (f,dict) {
       return function () {
          switch (dict.ctor)
@@ -1048,7 +1056,7 @@ Elm.Dict.make = function (_elm) {
               A2(map,f,dict._3),
               A2(map,f,dict._4));}
          _U.badCase($moduleName,
-         "between lines 385 and 394");
+         "between lines 394 and 399");
       }();
    });
    var showNColor = function (c) {
@@ -1097,7 +1105,7 @@ Elm.Dict.make = function (_elm) {
                    dict._4);}
               break;}
          _U.badCase($moduleName,
-         "between lines 145 and 157");
+         "between lines 154 and 162");
       }();
    };
    var blackish = function (t) {
@@ -1108,7 +1116,7 @@ Elm.Dict.make = function (_elm) {
             return _U.eq(t._0,
               Black) || _U.eq(t._0,BBlack);}
          _U.badCase($moduleName,
-         "between lines 330 and 332");
+         "between lines 339 and 341");
       }();
    };
    var blacken = function (t) {
@@ -1123,7 +1131,7 @@ Elm.Dict.make = function (_elm) {
               t._3,
               t._4);}
          _U.badCase($moduleName,
-         "between lines 369 and 371");
+         "between lines 378 and 380");
       }();
    };
    var Red = {ctor: "Red"};
@@ -1136,7 +1144,7 @@ Elm.Dict.make = function (_elm) {
             case "NBlack": return Red;
             case "Red": return Black;}
          _U.badCase($moduleName,
-         "between lines 235 and 239");
+         "between lines 244 and 248");
       }();
    };
    var lessBlack = function (color) {
@@ -1148,7 +1156,7 @@ Elm.Dict.make = function (_elm) {
             return $Native$Debug.crash("Can\'t make a negative black node less black!");
             case "Red": return NBlack;}
          _U.badCase($moduleName,
-         "between lines 244 and 248");
+         "between lines 253 and 257");
       }();
    };
    var lessBlackTree = function (dict) {
@@ -1166,7 +1174,7 @@ Elm.Dict.make = function (_elm) {
               dict._3,
               dict._4);}
          _U.badCase($moduleName,
-         "between lines 253 and 255");
+         "between lines 262 and 264");
       }();
    };
    var redden = function (t) {
@@ -1181,7 +1189,7 @@ Elm.Dict.make = function (_elm) {
               t._3,
               t._4);}
          _U.badCase($moduleName,
-         "between lines 377 and 382");
+         "between lines 386 and 388");
       }();
    };
    var balance_node = function (t) {
@@ -1383,7 +1391,7 @@ Elm.Dict.make = function (_elm) {
               r._3,
               r._4));}
          _U.badCase($moduleName,
-         "between lines 314 and 319");
+         "between lines 323 and 328");
       }();
    });
    var rem = F3(function (c,l,r) {
@@ -1404,7 +1412,7 @@ Elm.Dict.make = function (_elm) {
                               case "Red":
                               return RBEmpty(LBlack);}
                            _U.badCase($moduleName,
-                           "between lines 273 and 277");
+                           "between lines 282 and 286");
                         }();
                       case "RBNode":
                       return function () {
@@ -1494,7 +1502,7 @@ Elm.Dict.make = function (_elm) {
                    break;}
               break;}
          _U.badCase($moduleName,
-         "between lines 271 and 300");
+         "between lines 280 and 309");
       }();
    });
    var update = F3(function (k,
@@ -1524,7 +1532,7 @@ Elm.Dict.make = function (_elm) {
                                       ,_0: Same
                                       ,_1: empty};}
                             _U.badCase($moduleName,
-                            "between lines 185 and 189");
+                            "between lines 194 and 198");
                          }();}
                     break;
                   case "RBNode":
@@ -1553,7 +1561,7 @@ Elm.Dict.make = function (_elm) {
                                          dict._3,
                                          dict._4)};}
                                _U.badCase($moduleName,
-                               "between lines 192 and 197");
+                               "between lines 201 and 206");
                             }();
                           case "GT": return function () {
                                var $ = up(dict._4),
@@ -1589,7 +1597,7 @@ Elm.Dict.make = function (_elm) {
                                             dict._3,
                                             newRight)};}
                                   _U.badCase($moduleName,
-                                  "between lines 206 and 211");
+                                  "between lines 215 and 220");
                                }();
                             }();
                           case "LT": return function () {
@@ -1626,14 +1634,14 @@ Elm.Dict.make = function (_elm) {
                                             newLeft,
                                             dict._4)};}
                                   _U.badCase($moduleName,
-                                  "between lines 199 and 204");
+                                  "between lines 208 and 213");
                                }();
                             }();}
                        _U.badCase($moduleName,
-                       "between lines 190 and 211");
+                       "between lines 199 and 220");
                     }();}
                _U.badCase($moduleName,
-               "between lines 183 and 211");
+               "between lines 192 and 220");
             }();
          };
          var $ = up(dict),
@@ -1648,7 +1656,7 @@ Elm.Dict.make = function (_elm) {
                case "Same":
                return updatedDict;}
             _U.badCase($moduleName,
-            "between lines 213 and 219");
+            "between lines 222 and 225");
          }();
       }();
    });
@@ -1665,7 +1673,7 @@ Elm.Dict.make = function (_elm) {
       return A3(insert,
       key,
       value,
-      RBEmpty(LBlack));
+      empty);
    });
    var union = F2(function (t1,
    t2) {
@@ -1685,7 +1693,7 @@ Elm.Dict.make = function (_elm) {
                  _v214._1,
                  dict);}
             _U.badCase($moduleName,
-            "on line 457, column 38 to 59");
+            "on line 466, column 38 to 59");
          }();
       }),
       empty,
@@ -1743,7 +1751,7 @@ Elm.Dict.make = function (_elm) {
                                               value,
                                               _v220._1)};}
                _U.badCase($moduleName,
-               "between lines 478 and 480");
+               "between lines 487 and 489");
             }();
          });
          return A3(foldl,
@@ -1774,6 +1782,7 @@ Elm.Dict.make = function (_elm) {
                       ,singleton: singleton
                       ,insert: insert
                       ,update: update
+                      ,isEmpty: isEmpty
                       ,get: get
                       ,remove: remove
                       ,member: member
@@ -1908,7 +1917,7 @@ Elm.Graphics.Collage.make = function (_elm) {
                               ,["y",f.y + _v0._1]],
               f);}
          _U.badCase($moduleName,
-         "on line 226, column 7 to 35");
+         "on line 226, column 3 to 37");
       }();
    });
    var form = function (f) {
@@ -2591,7 +2600,7 @@ Elm.Graphics.Element.make = function (_elm) {
                  maxOrZero(ws),
                  $List.sum(hs));}
             _U.badCase($moduleName,
-            "between lines 362 and 373");
+            "between lines 362 and 368");
          }();
       }();
    });
@@ -2690,7 +2699,12 @@ Elm.Html.make = function (_elm) {
    _U = _N.Utils.make(_elm),
    _L = _N.List.make(_elm),
    $moduleName = "Html",
+   $Basics = Elm.Basics.make(_elm),
    $Graphics$Element = Elm.Graphics.Element.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
    $VirtualDom = Elm.VirtualDom.make(_elm);
    var fromElement = $VirtualDom.fromElement;
    var toElement = $VirtualDom.toElement;
@@ -2918,6 +2932,9 @@ Elm.Html.Attributes.make = function (_elm) {
    $Html = Elm.Html.make(_elm),
    $Json$Encode = Elm.Json.Encode.make(_elm),
    $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
    $String = Elm.String.make(_elm),
    $VirtualDom = Elm.VirtualDom.make(_elm);
    var attribute = $VirtualDom.attribute;
@@ -3542,8 +3559,12 @@ Elm.Html.Events.make = function (_elm) {
    _U = _N.Utils.make(_elm),
    _L = _N.List.make(_elm),
    $moduleName = "Html.Events",
+   $Basics = Elm.Basics.make(_elm),
    $Html = Elm.Html.make(_elm),
    $Json$Decode = Elm.Json.Decode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
    $VirtualDom = Elm.VirtualDom.make(_elm);
    var keyCode = A2($Json$Decode._op[":="],
@@ -3639,6 +3660,7 @@ Elm.Http.make = function (_elm) {
    $Maybe = Elm.Maybe.make(_elm),
    $Native$Http = Elm.Native.Http.make(_elm),
    $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
    $String = Elm.String.make(_elm),
    $Task = Elm.Task.make(_elm),
    $Time = Elm.Time.make(_elm);
@@ -3979,9 +4001,23 @@ Elm.Json.Decode.make = function (_elm) {
    };
    var Decoder = {ctor: "Decoder"};
    _elm.Json.Decode.values = {_op: _op
-                             ,Decoder: Decoder
-                             ,map: map
                              ,decodeString: decodeString
+                             ,decodeValue: decodeValue
+                             ,string: string
+                             ,$int: $int
+                             ,$float: $float
+                             ,bool: bool
+                             ,$null: $null
+                             ,list: list
+                             ,array: array
+                             ,tuple1: tuple1
+                             ,tuple2: tuple2
+                             ,tuple3: tuple3
+                             ,tuple4: tuple4
+                             ,tuple5: tuple5
+                             ,tuple6: tuple6
+                             ,tuple7: tuple7
+                             ,tuple8: tuple8
                              ,at: at
                              ,object1: object1
                              ,object2: object2
@@ -3993,29 +4029,15 @@ Elm.Json.Decode.make = function (_elm) {
                              ,object8: object8
                              ,keyValuePairs: keyValuePairs
                              ,dict: dict
-                             ,oneOf: oneOf
-                             ,string: string
-                             ,$float: $float
-                             ,$int: $int
-                             ,bool: bool
-                             ,list: list
-                             ,array: array
-                             ,$null: $null
                              ,maybe: maybe
-                             ,value: value
-                             ,decodeValue: decodeValue
-                             ,customDecoder: customDecoder
-                             ,andThen: andThen
+                             ,oneOf: oneOf
+                             ,map: map
                              ,fail: fail
                              ,succeed: succeed
-                             ,tuple1: tuple1
-                             ,tuple2: tuple2
-                             ,tuple3: tuple3
-                             ,tuple4: tuple4
-                             ,tuple5: tuple5
-                             ,tuple6: tuple6
-                             ,tuple7: tuple7
-                             ,tuple8: tuple8};
+                             ,andThen: andThen
+                             ,value: value
+                             ,customDecoder: customDecoder
+                             ,Decoder: Decoder};
    return _elm.Json.Decode.values;
 };
 Elm.Json = Elm.Json || {};
@@ -4044,16 +4066,16 @@ Elm.Json.Encode.make = function (_elm) {
    var encode = $Native$Json.encode;
    var Value = {ctor: "Value"};
    _elm.Json.Encode.values = {_op: _op
-                             ,Value: Value
                              ,encode: encode
                              ,string: string
                              ,$int: $int
                              ,$float: $float
                              ,bool: bool
                              ,$null: $null
-                             ,object: object
+                             ,list: list
                              ,array: array
-                             ,list: list};
+                             ,object: object
+                             ,Value: Value};
    return _elm.Json.Encode.values;
 };
 Elm.Lib = Elm.Lib || {};
@@ -4074,6 +4096,10 @@ Elm.Lib.API.make = function (_elm) {
    $Http = Elm.Http.make(_elm),
    $Json$Decode = Elm.Json.Decode.make(_elm),
    $Json$Encode = Elm.Json.Encode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
    $Task = Elm.Task.make(_elm);
    var userDecoder = A3($Json$Decode.object2,
    F2(function (name,email) {
@@ -4225,7 +4251,11 @@ Elm.Lib.Header.make = function (_elm) {
    $moduleName = "Lib.Header",
    $Basics = Elm.Basics.make(_elm),
    $Html = Elm.Html.make(_elm),
-   $Html$Attributes = Elm.Html.Attributes.make(_elm);
+   $Html$Attributes = Elm.Html.Attributes.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
    var logoutButton = A2($Html.a,
    _L.fromArray([$Html$Attributes.$class("navbar-link")
                 ,$Html$Attributes.href("/logout")]),
@@ -4280,7 +4310,12 @@ Elm.Lib.URI.make = function (_elm) {
    _U = _N.Utils.make(_elm),
    _L = _N.List.make(_elm),
    $moduleName = "Lib.URI",
-   $Native$URI = Elm.Native.URI.make(_elm);
+   $Basics = Elm.Basics.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Native$URI = Elm.Native.URI.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
    var decodeURI = $Native$URI.decodeURI;
    var encodeURI = $Native$URI.encodeURI;
    _elm.Lib.URI.values = {_op: _op
@@ -4405,7 +4440,7 @@ Elm.List.make = function (_elm) {
             case "[]":
             return $Maybe.Nothing;}
          _U.badCase($moduleName,
-         "between lines 87 and 95");
+         "between lines 87 and 89");
       }();
    };
    var head = function (list) {
@@ -4416,7 +4451,7 @@ Elm.List.make = function (_elm) {
             case "[]":
             return $Maybe.Nothing;}
          _U.badCase($moduleName,
-         "between lines 75 and 84");
+         "between lines 75 and 77");
       }();
    };
    _op["::"] = $Native$List.cons;
@@ -4455,7 +4490,7 @@ Elm.List.make = function (_elm) {
             return A2(_op["::"],_v15._0,xs);
             case "Nothing": return xs;}
          _U.badCase($moduleName,
-         "between lines 179 and 186");
+         "between lines 179 and 181");
       }();
    });
    var filterMap = F2(function (f,
@@ -4602,7 +4637,7 @@ Elm.List.make = function (_elm) {
             case "[]":
             return _L.fromArray([]);}
          _U.badCase($moduleName,
-         "between lines 350 and 361");
+         "between lines 350 and 356");
       }();
    });
    _elm.List.values = {_op: _op
@@ -4666,6 +4701,7 @@ Elm.Main.make = function (_elm) {
    $Lib$URI = Elm.Lib.URI.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
    $Task = Elm.Task.make(_elm);
    var peerView = function (peer) {
@@ -4876,7 +4912,7 @@ Elm.Maybe.make = function (_elm) {
             case "Nothing":
             return $default;}
          _U.badCase($moduleName,
-         "between lines 45 and 56");
+         "between lines 45 and 47");
       }();
    });
    var Nothing = {ctor: "Nothing"};
@@ -4889,11 +4925,11 @@ Elm.Maybe.make = function (_elm) {
                     case "Nothing":
                     return oneOf(maybes._1);}
                  _U.badCase($moduleName,
-                 "between lines 64 and 73");
+                 "between lines 64 and 66");
               }();
             case "[]": return Nothing;}
          _U.badCase($moduleName,
-         "between lines 59 and 73");
+         "between lines 59 and 66");
       }();
    };
    var andThen = F2(function (maybeValue,
@@ -4918,7 +4954,7 @@ Elm.Maybe.make = function (_elm) {
             return Just(f(maybe._0));
             case "Nothing": return Nothing;}
          _U.badCase($moduleName,
-         "between lines 76 and 107");
+         "between lines 76 and 78");
       }();
    });
    _elm.Maybe.values = {_op: _op
@@ -8514,7 +8550,7 @@ Elm.Native.Port.make = function(localRuntime) {
 				"Regarding the port named '" + name + "' with type:\n\n" +
 				"    " + type.split('\n').join('\n        ') + "\n\n" +
 				"You just sent the value:\n\n" +
-				"    " + JSON.stringify(arg.value) + "\n\n" +
+				"    " + JSON.stringify(value) + "\n\n" +
 				"but it cannot be converted to the necessary type.\n" +
 				e.message
 			);
@@ -9348,9 +9384,7 @@ Elm.Native.Show.make = function(localRuntime) {
 		}
 		if (type === 'object' && 'notify' in v && 'id' in v)
 		{
-			return 'initialValue' in v
-				? '<Signal>'
-				: '<Stream>';
+			return '<Signal>';
 		}
 		return "<internal structure>";
 	};
@@ -13341,7 +13375,7 @@ Elm.Result.make = function (_elm) {
             case "Ok":
             return $Maybe.Just(result._0);}
          _U.badCase($moduleName,
-         "between lines 164 and 177");
+         "between lines 164 and 166");
       }();
    };
    var Err = function (a) {
@@ -13356,7 +13390,7 @@ Elm.Result.make = function (_elm) {
             case "Ok":
             return callback(result._0);}
          _U.badCase($moduleName,
-         "between lines 126 and 145");
+         "between lines 126 and 128");
       }();
    });
    var Ok = function (a) {
@@ -13370,7 +13404,7 @@ Elm.Result.make = function (_elm) {
             case "Ok":
             return Ok(func(ra._0));}
          _U.badCase($moduleName,
-         "between lines 41 and 52");
+         "between lines 41 and 43");
       }();
    });
    var map2 = F3(function (func,
@@ -13524,7 +13558,7 @@ Elm.Result.make = function (_elm) {
                  return Err(_v39._4._0);}
               break;}
          _U.badCase($moduleName,
-         "between lines 82 and 123");
+         "between lines 82 and 88");
       }();
    });
    var formatError = F2(function (f,
@@ -13536,7 +13570,7 @@ Elm.Result.make = function (_elm) {
             case "Ok":
             return Ok(result._0);}
          _U.badCase($moduleName,
-         "between lines 148 and 161");
+         "between lines 148 and 150");
       }();
    });
    var fromMaybe = F2(function (err,
@@ -13627,6 +13661,7 @@ Elm.Set.make = function (_elm) {
    var intersect = $Dict.intersect;
    var union = $Dict.union;
    var member = $Dict.member;
+   var isEmpty = $Dict.isEmpty;
    var remove = $Dict.remove;
    var insert = function (k) {
       return A2($Dict.insert,
@@ -13655,6 +13690,7 @@ Elm.Set.make = function (_elm) {
                      ,singleton: singleton
                      ,insert: insert
                      ,remove: remove
+                     ,isEmpty: isEmpty
                      ,member: member
                      ,foldl: foldl
                      ,foldr: foldr
@@ -13770,7 +13806,7 @@ Elm.Signal.make = function (_elm) {
             case "[]":
             return $Debug.crash("mergeMany was given an empty list!");}
          _U.badCase($moduleName,
-         "between lines 177 and 197");
+         "between lines 177 and 182");
       }();
    };
    var foldp = $Native$Signal.foldp;
@@ -14379,9 +14415,13 @@ Elm.VirtualDom.make = function (_elm) {
    _U = _N.Utils.make(_elm),
    _L = _N.List.make(_elm),
    $moduleName = "VirtualDom",
+   $Basics = Elm.Basics.make(_elm),
    $Graphics$Element = Elm.Graphics.Element.make(_elm),
    $Json$Decode = Elm.Json.Decode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
    $Native$VirtualDom = Elm.Native.VirtualDom.make(_elm),
+   $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm);
    var lazy3 = $Native$VirtualDom.lazy3;
    var lazy2 = $Native$VirtualDom.lazy2;
