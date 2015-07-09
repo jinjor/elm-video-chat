@@ -99,6 +99,7 @@ port runTasks =
       RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
       RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
       ChatAction (ChatView.Send x) -> (WS.send <| messageToJson c.selfPeerId c.roomName x time) `onError` (\e -> fail <| WSError e)
+      ChatAction (ChatView.Open) -> (ChatView.afterUpdate ChatView.ScrollDown) `onError` (\e -> fail <| ChatViewError e)
       ChatAction x -> ChatView.afterUpdate x `onError` (\e -> fail <| ChatViewError e)
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
       StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
