@@ -7,6 +7,12 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     url: 'stun:stun.anyfirewall.com:3478'
   }*/];
   app.get('/room/:id', function(req, res, next) {
+    //TODO
+    if(!req.session.user) {
+      res.redirect('/');
+      return;
+    }
+
     var roomId = req.params.id;
     session.getRoom(roomId) || session.createRoom(roomId);
     req.url = '/room.html';
@@ -16,6 +22,11 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     var roomId = req.params.id;
     var room = session.getRoom(roomId);
     if (room) {
+      //TODO
+      // if(!req.session.user) {
+      //   res.redirect('/');
+      //   return;
+      // }
       storage.getUser(req.session.user).then(function(user) {
         var users = {};
         var clientIds = room.getClientIds();
@@ -38,7 +49,14 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     }
   });
   app.get('/api/rooms', function(req, res) {
+    //TODO
+    if(!req.session.user) {
+      res.redirect('/');
+      return;
+    }
     storage.getUser(req.session.user).then(function(user) {
+      console.log(user);
+
       var rooms = session.getRooms();
       var _rooms = rooms.map(function(room) {
         var users = {};

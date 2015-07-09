@@ -16,21 +16,12 @@ var getRooms = function() {
   }));
 };
 var users = {};
-var addUser = function(id, name, email) {
-  var user = {
-    id: id,
-    name: name,
-    email: email
-  };
+var addUser = function(id, user) {
   users[id] = user;
   return Promise.resolve(user);
 };
 var getUser = function(id) {
-  var user = users[id] || {
-    id: id,
-    name: id.split('@')[0],
-    email: id
-  };
+  var user = users[id];
   return Promise.resolve(user);
 };
 

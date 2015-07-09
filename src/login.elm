@@ -37,28 +37,29 @@ view : Address Action -> Model -> Html
 view address model =
   div [class "login-wrapper"][
     div [class "panel panel-default center-block", style [("max-width", "500px")]][
-      div [class "panel-heading"][
-        h2 [class "panel-title"] [text "please login"]
-      ]
-      , div [class "panel-body"][
-        Html.form [class "form-horizontal col-md-12", action "/api/login", method "POST"][
-          div [class "form-group row"][
-            label [class "col-sm-2 control-label"] [text "Mail"]
-            , div [class "col-sm-10"] [
-              input [class "form-control", name "email", value ""][]
-            ]
-          ]
-          , div [class "form-group row"] [
-            label [class "col-sm-2 control-label"][text "Password"]
-            , div [class "col-sm-10"][
-              input [class "form-control", type' "password", name "password", value ""][]
-            ]
-          ]
-          , div [class "text-center"][
-            input [class "login-submit btn btn-primary", type' "submit", value "submit"][]
-          ]
-        ]
-      ]
+      a [href "/oauth/twitter"] [text "Login by twitter"]
+      -- div [class "panel-heading"][
+      --   h2 [class "panel-title"] [text "please login"]
+      -- ]
+      -- , div [class "panel-body"][
+      --   Html.form [class "form-horizontal col-md-12", action "/api/login", method "POST"][
+      --     div [class "form-group row"][
+      --       label [class "col-sm-2 control-label"] [text "Mail"]
+      --       , div [class "col-sm-10"] [
+      --         input [class "form-control", name "email", value ""][]
+      --       ]
+      --     ]
+      --     , div [class "form-group row"] [
+      --       label [class "col-sm-2 control-label"][text "Password"]
+      --       , div [class "col-sm-10"][
+      --         input [class "form-control", type' "password", name "password", value ""][]
+      --       ]
+      --     ]
+      --     , div [class "text-center"][
+      --       input [class "login-submit btn btn-primary", type' "submit", value "submit"][]
+      --     ]
+      --   ]
+      -- ]
     ]
   ]
 
