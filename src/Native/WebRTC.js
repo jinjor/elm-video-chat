@@ -33,7 +33,7 @@
     var _initialize = function(_clientId, iceServers) {
       iceServers = listToArray(iceServers);
       clientId = _clientId;
-      cm = ceateConnectionManager({
+      cm = createConnectionManager({
         iceServers: iceServers
       });
       return Task.asyncFunction(function(callback) {
@@ -155,7 +155,7 @@
     return roomId;
   }
 
-  function ceateConnectionManager(connectionOption) {
+  function createConnectionManager(connectionOption) {
     var connections = {};//TODO upstream/downstream
     var getConnection = function(id) {
       if(!id) {
@@ -330,6 +330,7 @@
 
   function addCandidate(clientId, cm, send, e) {
     var pc = cm.getConnection(e.from);
+    console.log('addCandidate:', e);
     if (e.data.candidate) {
       pc.addIceCandidate(new RTCIceCandidate(e.data));
     }
@@ -431,7 +432,6 @@
       array.push(entry);
 			list = list._1;
 		}
-    console.log(array);
 		return array;
 	}
 
