@@ -3,3 +3,7 @@ elm-stuff
 repl*
 npm-debug.log
 .openshift/**/*
+
+public/index.js
+public/login.js
+public/room.js
