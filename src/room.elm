@@ -247,6 +247,10 @@ update action context =
                       chat <- ChatView.update (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time) newContext.chat
                     }
             _ -> newContext
+      RTCAction event ->
+        { context |
+          rtc <- WebRTC.update event context.rtc
+        }
       Init selfPeerId roomName ->
         { context |
           selfPeerId <- selfPeerId,
