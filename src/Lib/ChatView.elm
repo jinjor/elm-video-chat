@@ -13,6 +13,7 @@ import Signal exposing (..)
 import Debug exposing (log)
 import Date exposing (Date)
 import Time exposing (Time)
+import String
 
 import Lib.PanelHeader exposing (..)
 
@@ -110,9 +111,7 @@ messageView myName (name, image, message, time) =
       avator = img [src image, class "chat-avator"] []
       name_ = div [class "chat-name"] [text name]
       message_ = div [class "chat-message"] [ div [] [text message], time_]
-      hour_ = toString <| Date.hour time
-      minute_ = toString <| Date.minute time
-      time_ = div [class "chat-time"] [text <| hour_ ++ ":" ++ minute_]
+      time_ = div [class "chat-time"] [text <| dateToString time]
       clazz = if self then "chat chat-self" else "chat"
   in li [class clazz] (if self then [message_] else [avator, name_, message_])
 
@@ -171,6 +170,18 @@ view address model =
   ]
 
 
+---
+
+dateToString : Date -> String
+dateToString time =
+  let
+    hour_ = toString <| Date.hour time
+    minute_ = toString <| Date.minute time
+  in
+    (fillZero2 hour_) ++ ":" ++ (fillZero2 minute_)
+
+fillZero2 : String -> String
+fillZero2 s = if String.length s == 2 then s else "0" ++ s
 
 
 
