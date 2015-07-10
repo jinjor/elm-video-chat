@@ -14,20 +14,42 @@ Elm.Native.WebSocket.make = function(localRuntime) {
     var opened = NS.input('WebSocket.opened', false);
 
     var connection = null;
+    var interval = null;
     var connect = function(url) {
       return Task.asyncFunction(function(callback) {
-        connection = new WebSocket(url, ['soap', 'xmpp']);
-        connection.onopen = function() {
-          localRuntime.notify(opened.id, true);
-          callback(Task.succeed(Utils.Tuple0));
-        };
-        connection.onclose = function() {
-          localRuntime.notify(opened.id, false);
-        };
-        connection.onmessage = function(e) {
-          localRuntime.notify(message.id, e.data);
-        };
+        _connect(url, callback);
       });
+    };
+    var _connect = function(url, callback) {
+      if(!connection) {
+        try {
+          connection = new WebSocket(url, ['soap', 'xmpp']);
+          connection.onopen = function() {
+            localRuntime.notify(opened.id, true);
+            callback && callback(Task.succeed(Utils.Tuple0));
+            if(interval) {
+              clearInterval(interval);
+              interval = null;
+            }
+          };
+          connection.onclose = function() {
+            localRuntime.notify(opened.id, false);
+            if(!interval) {
+              interval = setInterval(function() {
+                console.log('trying reconnect...');
+                _connect(url);
+              }, 1000);
+            }
+            connection = null;
+          };
+          connection.onmessage = function(e) {
+            localRuntime.notify(message.id, e.data);
+          };
+        } catch(e) {
+          console.log(e);
+          // localRuntime.notify(opened.id, false);
+        }
+      }
     };
 
     var send = function(s) {
