@@ -38,7 +38,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
               interval = setInterval(function() {
                 console.log('trying reconnect...');
                 _connect(url);
-              }, 1000);
+              }, 3000);
             }
             connection = null;
           };
