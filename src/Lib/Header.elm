@@ -8,27 +8,39 @@ import Signal exposing (..)
 import Debug exposing (log)
 
 -- Models
-type alias Context a = { user: User a }
+type alias Model a =
+  { user: User a
+  , connected: Bool
+  }
 type alias User a = { a | displayName: String }
 
 
 -- Views(no signals appears here)
-header : Context a -> Html
-header c = div [class "navbar navbar-default"] [
-            div [class "container"] [
-              div [class "navbar-header"] [
-                a [class "navbar-brand", href "/"] [
-                  text "Video Chat"
-                ]
-              ],
-              div [class "collapse navbar-collapse"] [
-                welcomeView,
-                div [class "navbar-text navbar-right"] [
-                  text ("Hello, " ++ c.user.displayName)
-                ]
-              ]
-            ]
+header : Model a -> Html
+header c =
+  let
+    offline = div [class "navbar-header"] [
+      div [class "navbar-text header-offline"][
+        if c.connected then text "" else text "(Offline)"
+      ]
+    ]
+  in
+    div [class "navbar navbar-default"] [
+      div [class "container"] [
+        div [class "navbar-header"] [
+          a [class "navbar-brand", href "/"][
+            text "Video Chat"
           ]
+        ],
+        offline,
+        div [class "collapse navbar-collapse"] [
+          welcomeView,
+          div [class "navbar-text navbar-right"] [
+            text ("Hello, " ++ c.user.displayName)
+          ]
+        ]
+      ]
+    ]
 
 
 welcomeView = div [class "navbar-text navbar-right"] [

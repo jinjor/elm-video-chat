@@ -6,6 +6,9 @@ video {
 html, body {
 	height: 100%;
 }
+.header-offline {
+	color: #e66;
+}
 .login-body > div {
 	height: 100%;
 	width: 100%;

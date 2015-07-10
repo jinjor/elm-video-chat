@@ -1,13 +1,42 @@
-module Lib.WebSocket where
+module Lib.WebSocket (Model, init, Action(Message), update, actions, connect, send, Error, logError) where
 
 import Task exposing (..)
+import Signal exposing (..)
 import Native.WebSocket
+
+type alias Model = {
+    connected: Bool
+  }
+
+init : Model
+init = {
+    connected = False
+  }
+
+type Action
+  = Opened Bool
+  | Message String
+
+update: Action -> Model -> Model
+update action model =
+  case action of
+    Opened opened ->
+      { model | connected <- opened }
+    _ ->
+      model
+
 
 connect_ : String -> Task String ()
 connect_ s = Native.WebSocket.connect s
 
 connect : String -> Task Error ()
 connect url = (connect_ url) `onError` (\s -> fail <| ConnectionError s)
+
+actions : Signal Action
+actions = Signal.mergeMany
+  [ Opened <~ opened
+  , Message <~ message
+  ]
 
 message : Signal String
 message = Native.WebSocket.message

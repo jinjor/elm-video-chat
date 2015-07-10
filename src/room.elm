@@ -33,6 +33,7 @@ type alias Context = {
     selfPeerId: PeerId
     , roomName: String
     , address: Signal.Address Action
+    , ws : WS.Model
     , rtc : WebRTC.Model
     , chat: ChatView.Model
   }
@@ -44,6 +45,7 @@ initialContext : Context
 initialContext = { selfPeerId = ""
   , roomName = ""
   , address = actions.address
+  , ws = WS.init
   , rtc = WebRTC.init
   , chat = ChatView.init }
 
@@ -60,7 +62,6 @@ fetchRoom : String -> Task Error API.InitialData
 fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchError err)
 
 connectWebSocket : String -> Task Error ()
--- connectWebSocket = (WS.connect "wss://localhost:9999/ws") `onError` (\e -> fail <| WSError e)
 connectWebSocket url = (WS.connect url) `onError` (\e -> fail <| WSError e)
 
 initializeRTC : PeerId -> API.InitialData -> Task Error ()
@@ -96,6 +97,23 @@ port runTasks : Signal (Task Error ())
 port runTasks =
   let f (time, action) c = case log "runTasks" action of
       InitRoom initial -> (WS.send <| joinToJson c.selfPeerId c.roomName) `onError` (\e -> fail <| WSError e)
+      WSAction event ->
+        case event of
+          WS.Message s ->
+            let
+              decodedMessage = decode s
+            in
+              case decodedMessage of
+                RTCMessage (WebRTC.Request x) ->
+                  (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
+                RTCMessage x ->
+                  WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
+                ChatMessage _ _ _ ->
+                  ChatView.afterUpdate ChatView.ScrollDown `onError` (\e -> fail <| ChatViewError e)
+                UndefinedMessage ->
+                  Task.succeed ()
+          _ ->
+            Task.succeed ()
       RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
       RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
       ChatAction (ChatView.Send x) -> (WS.send <| messageToJson c.selfPeerId c.roomName x time) `onError` (\e -> fail <| WSError e)
@@ -104,7 +122,6 @@ port runTasks =
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
       StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
       EndStreaming x -> WebRTC.doTask (WebRTC.EndStreaming x) `onError` (\e -> fail <| RTCError e)
-      ChatMessage _ _ _ -> ChatView.afterUpdate ChatView.ScrollDown `onError` (\e -> fail <| ChatViewError e)
       _ -> Task.succeed ()
   in Signal.map2 f (Time.timestamp actionSignal) context
 
@@ -171,47 +188,37 @@ userOf c peerId = case Dict.get peerId c.rtc.users of
 
 type Action
   = NoOp
+  | WSAction WS.Action
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
-  | ChatMessage PeerId String Time
   | Init PeerId String
   | InitRoom API.InitialData
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | FullScreen String
 
+type DecodedMessage
+  = RTCMessage WebRTC.Action
+  | ChatMessage PeerId String Time
+  | UndefinedMessage
+
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
 
-decode : String -> Action
+decode : String -> DecodedMessage
 decode s = case WebRTC.decode s of
-  Just a -> RTCAction a
+  Just a -> RTCMessage a
   Nothing -> case decodeChatMessage s of
     Just (peerId, mes, time) -> ChatMessage peerId mes time
-    Nothing -> NoOp
+    Nothing -> UndefinedMessage
 
 
 actionSignal : Signal Action
 actionSignal = Signal.mergeMany [
   actions.signal
-  , decode <~ WS.message
+  , WSAction <~ WS.actions
   , RTCAction <~ WebRTC.actions
   ]
-
--- updateMB : Mailbox Action
--- updateMB = mailbox NoOp
---
--- port dispatchSignal : Signal (Task () ())
--- port dispatchSignal =
---   let f action =
---
---     Signal.send updateMB.address action
---
---
---
---   in Signal.map f actionSignal
-
-
 
 
 -- Update --
@@ -219,10 +226,27 @@ actionSignal = Signal.mergeMany [
 update : Action -> Context -> Context
 update action context =
     case log "action" action of
-      RTCAction event ->
-        { context |
-          rtc <- WebRTC.update event context.rtc
-        }
+      WSAction event ->
+        let newContext =
+          { context |
+            ws <- WS.update event context.ws
+          }
+        in
+          case event of
+            WS.Message s ->
+              let
+                decodedMessage = decode s
+              in
+                case decodedMessage of
+                  RTCMessage rtcMes ->
+                    { newContext |
+                      rtc <- WebRTC.update rtcMes newContext.rtc
+                    }
+                  ChatMessage peerId s time ->
+                    { newContext |
+                      chat <- ChatView.update (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time) newContext.chat
+                    }
+            _ -> newContext
       Init selfPeerId roomName ->
         { context |
           selfPeerId <- selfPeerId,
@@ -233,14 +257,13 @@ update action context =
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
           chat <- ChatView.update (ChatView.MyName initial.user.displayName) context.chat
         }
-      StartStreaming a -> { context |
+      StartStreaming a ->
+        { context |
           rtc <- WebRTC.update (WebRTC.StartStreaming a) context.rtc
         }
-      EndStreaming a -> { context |
+      EndStreaming a ->
+        { context |
           rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
-        }
-      ChatMessage peerId s time -> { context |
-          chat <- ChatView.update (ChatView.Message (userOf context peerId).displayName (userOf context peerId).image s time) context.chat
         }
       ChatAction action ->
         { context |
@@ -276,7 +299,7 @@ windowHeader title buttons =
 view : Context -> Html
 view c =
   div [] [
-    Header.header {user = c.rtc.me},
+    Header.header { user = c.rtc.me, connected = c.ws.connected },
     div [class "container"] [
       statusView c,
       mainView c,
@@ -332,7 +355,6 @@ peerView address c peer =
       -- i [class "fa fa-user"] [],
       img [src user.image] []
       , text user.displayName
-      -- text peer
     ]
   ]
 

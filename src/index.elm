@@ -48,7 +48,7 @@ actions = Signal.mailbox NoOp
 --- View
 view : Address Action -> Context -> Html
 view address c = div [] [
-    Header.header { user=c.me },
+    Header.header { user = c.me, connected = True },
     div [ class "container" ] [
       -- h2 [] [text "Rooms"],
       ul [class "list-unstyled clearfix col-md-12"] (roomViews c),
