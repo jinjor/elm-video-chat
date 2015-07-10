@@ -7,7 +7,7 @@ html, body {
 	height: 100%;
 }
 .header-offline {
-	color: #e66;
+	color: #e66 !important;
 }
 .login-body > div {
 	height: 100%;
