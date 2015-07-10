@@ -86,7 +86,7 @@ html, body {
 }
 .chat {
 	position: relative;
-	margin: 8px inherit;
+	margin: 8px 0;
 }
 .chat.chat-self {
 	text-align: right;
@@ -94,21 +94,14 @@ html, body {
 .chat .chat-name {
   position: relative;
   margin-left: 35px;
+	font-size: 85%;
 }
-.chat.chat-self .chat-name {
-	/*margin-left: inherit;
-	margin-right: 35px;*/
-}
+
 .chat .chat-avator {
   width: 30px;
   height: 30px;
   position: absolute;
   left: 0;
-}
-.chat.chat-self .chat-avator {
-	display: none;
-	/*left: inherit;
-  right: 0;*/
 }
 
 .chat .chat-message {
@@ -126,13 +119,12 @@ html, body {
 .chat.chat-self .chat-message {
 	background-color: #ae9;
   margin-left: inherit;
-	/*margin-right: 35px;
-	right: 0;*/
 }
 .chat .chat-time {
 	position: absolute;
   bottom: 0;
   right: -40px;
+	font-size: 85%;
 }
 .chat.chat-self .chat-time {
 	position: absolute;
