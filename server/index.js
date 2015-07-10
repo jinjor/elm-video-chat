@@ -54,7 +54,14 @@ app.use(sessionHandler);
 
 app.use(passport.initialize());
 app.use(passport.session());
-
+// force https
+app.get('*', function(req, res, next) {
+  if(req.headers['x-forwarded-proto'] != 'https') {
+    res.redirect('https://vity2.herokuapp.com' + req.url);
+  } else {
+    next();
+  }
+});
 app.get('/oauth/twitter', passport.authenticate('twitter', {forceLogin: true}));
 app.get('/oauth/twitter/callback',
   passport.authenticate('twitter', {
