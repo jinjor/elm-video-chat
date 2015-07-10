@@ -165,7 +165,7 @@ context = Signal.foldp update initialContext actionSignal
 userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.rtc.users of
   Just user -> user
-  Nothing -> { name="", email="" }
+  Nothing -> { name="", displayName="", image="" }
 
 -- Action --
 
@@ -231,7 +231,7 @@ update action context =
       InitRoom initial ->
         { context |
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
-          chat <- ChatView.update (ChatView.MyName initial.user.name) context.chat
+          chat <- ChatView.update (ChatView.MyName initial.user.displayName) context.chat
         }
       StartStreaming a -> { context |
           rtc <- WebRTC.update (WebRTC.StartStreaming a) context.rtc
@@ -240,7 +240,7 @@ update action context =
           rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
         }
       ChatMessage peerId s time -> { context |
-          chat <- ChatView.update (ChatView.Message (userOf context peerId).name s time) context.chat
+          chat <- ChatView.update (ChatView.Message (userOf context peerId).displayName (userOf context peerId).image s time) context.chat
         }
       ChatAction action ->
         { context |
@@ -276,7 +276,7 @@ windowHeader title buttons =
 view : Context -> Html
 view c =
   div [] [
-    Header.header {user= {name=c.rtc.me.name}},
+    Header.header {user = c.rtc.me},
     div [class "container"] [
       statusView c,
       mainView c,
@@ -329,8 +329,9 @@ peerView address c peer =
   let user = userOf c peer
   in li [] [
     div [] [
-      i [class "fa fa-user"] [],
-      text user.name
+      -- i [class "fa fa-user"] [],
+      img [src user.image] []
+      , text user.displayName
       -- text peer
     ]
   ]
@@ -375,7 +376,7 @@ remoteMediaWindowView : Address Action -> Context -> Connection -> Maybe Html
 remoteMediaWindowView address c connection =
   let (peerId, mediaType) = connection
       user = userOf c peerId
-      title = String.concat [user.name]
+      title = String.concat [user.displayName]
       maybeVideoUrl = Dict.get connection c.rtc.videoUrls
   in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
 

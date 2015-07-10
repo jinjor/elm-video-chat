@@ -60,7 +60,7 @@ init : Model
 init = {
       peers = Set.empty
     , users = Dict.empty
-    , me = {name="", email=""}
+    , me = {name="", displayName="", image=""}
     , connections = Set.empty
     , videoUrls = Dict.empty
     , localVideoUrls = Dict.empty
@@ -178,8 +178,8 @@ decoder = Json.object3 (\t f d -> convertToAction t f d)
 
 joinDecoder : Json.Decoder User
 joinDecoder =
-  let userDecoder = Json.object3 (,,) ("id" := Json.string) ("name" := Json.string) ("email" := Json.string)
-  in Json.object1 (\(id, name, email) -> {name= name, email= email}) ("user" := userDecoder)
+  let userDecoder = Json.object4 (,,,) ("id" := Json.string) ("name" := Json.string) ("displayName" := Json.string) ("image" := Json.string)
+  in Json.object1 (\(id, name, displayName, image) -> {name = name, displayName = displayName, image = image}) ("user" := userDecoder)
 
 --
 

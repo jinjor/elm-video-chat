@@ -16,7 +16,7 @@ type alias Context = { roomName : String, rooms: List Room, me: User }
 
 --- Model
 initialContext : Context
-initialContext = { roomName = "", rooms = [], me= { name="", email="" } }
+initialContext = { roomName = "", rooms = [], me= { name="", displayName="", image="" } }
 
 context : Signal Context
 context = Signal.foldp update initialContext actions.signal
@@ -75,7 +75,7 @@ roomViews c = List.map roomView c.rooms
 userOf : Dict PeerId User -> PeerId -> User
 userOf d peerId = case Dict.get peerId d of
   Just user -> user
-  Nothing -> { name="", email="" }
+  Nothing -> { name="", displayName="", image="" }
 
 roomView : Room -> Html
 roomView room =

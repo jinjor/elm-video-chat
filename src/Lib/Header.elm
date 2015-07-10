@@ -9,7 +9,7 @@ import Debug exposing (log)
 
 -- Models
 type alias Context a = { user: User a }
-type alias User a = { a | name: String }
+type alias User a = { a | displayName: String }
 
 
 -- Views(no signals appears here)
@@ -24,7 +24,7 @@ header c = div [class "navbar navbar-default"] [
               div [class "collapse navbar-collapse"] [
                 welcomeView,
                 div [class "navbar-text navbar-right"] [
-                  text ("Hello, " ++ c.user.name)
+                  text ("Hello, " ++ c.user.displayName)
                 ]
               ]
             ]

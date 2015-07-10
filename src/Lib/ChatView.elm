@@ -21,20 +21,22 @@ import Native.ChatView
 -- Models
 
 type alias Name = String
+type alias Image = String
 type alias ChatMessage = (Name, String, Date)
+type alias IncomingChatMessage = (Name, Image, String, Date)
 type Action
   = NoOp
   | Open
   | Close
   | UpdateField String
   | Send String
-  | Message Name String Time
+  | Message Name Image String Time
   | MyName String
   | ScrollDown
 
 type alias Model = {
   opened : Bool,
-  messages : List ChatMessage,
+  messages : List IncomingChatMessage,
   field : String,
   noReadCount : Int,
   myName : String
@@ -61,8 +63,8 @@ update action model = case log "ChatView.action" action of
   Close -> { model |
     opened <- False
   }
-  Message name s time -> { model |
-    messages <- (name, s, Date.fromTime time) :: model.messages,
+  Message name image s time -> { model |
+    messages <- (name, image, s, Date.fromTime time) :: model.messages,
     field <- if model.myName == name then "" else model.field,
     noReadCount <- if model.opened then 0 else model.noReadCount + 1
   }
@@ -102,17 +104,17 @@ is13 code =
 
 
 -- Views
-messageView : Name -> ChatMessage -> Html
-messageView myName (name, message, time) =
+messageView : Name -> IncomingChatMessage -> Html
+messageView myName (name, image, message, time) =
   let self = myName == name
-      avator = img [src "", class "chat-avator"] []
+      avator = img [src image, class "chat-avator"] []
       name_ = div [class "chat-name"] [text name]
       message_ = div [class "chat-message"] [ div [] [text message], time_]
       hour_ = toString <| Date.hour time
       minute_ = toString <| Date.minute time
       time_ = div [class "chat-time"] [text <| hour_ ++ ":" ++ minute_]
       clazz = if self then "chat chat-self" else "chat"
-  in li [class clazz] [avator, name_, message_]
+  in li [class clazz] (if self then [message_] else [avator, name_, message_])
 
 chatTimeline : Model -> Html
 chatTimeline model =

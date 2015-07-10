@@ -42,6 +42,11 @@ html, body {
 	padding-top: 2px;
 	padding-bottom: 2px;
 }
+.user-list img {
+	width: 20px;
+	height: 20px;
+	margin-right: 3px;
+}
 :not(.btn) > .fa {
   margin-right: 0.5em;
 }
@@ -81,14 +86,31 @@ html, body {
 }
 .chat {
 	position: relative;
+	margin: 8px inherit;
 }
 .chat.chat-self {
 	text-align: right;
 }
 .chat .chat-name {
   position: relative;
+  margin-left: 35px;
+}
+.chat.chat-self .chat-name {
+	/*margin-left: inherit;
+	margin-right: 35px;*/
+}
+.chat .chat-avator {
+  width: 30px;
+  height: 30px;
+  position: absolute;
   left: 0;
 }
+.chat.chat-self .chat-avator {
+	display: none;
+	/*left: inherit;
+  right: 0;*/
+}
+
 .chat .chat-message {
 	width: 75%;
   border: solid 1px #aaa;
@@ -99,11 +121,13 @@ html, body {
   left: 0;
 	display: inline-block;
 	text-align: left;
+	margin-left: 35px;
 }
 .chat.chat-self .chat-message {
 	background-color: #ae9;
-  left: inherit;
-	right: 0;
+  margin-left: inherit;
+	/*margin-right: 35px;
+	right: 0;*/
 }
 .chat .chat-time {
 	position: absolute;

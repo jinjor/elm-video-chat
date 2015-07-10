@@ -17,7 +17,7 @@ import Debug exposing (log)
 type alias InitialData = { room: Room, user: User, iceServers: List Json.Encode.Value }
 type alias InitialRoomsData = { rooms: List Room, user: User }
 type alias Room = { id:String, peers: List PeerId, users: List (PeerId, User)}
-type alias User = { name:String, email:String }
+type alias User = { name:String, displayName:String, image:String }
 type alias PeerId = String
 
 -- Data access
@@ -53,9 +53,10 @@ initialRoomsDataDecoder =
 
 
 userDecoder : Json.Decoder User
-userDecoder = Json.object2 (\name email -> { name=name, email=email })
+userDecoder = Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
         ("name" := Json.string)
-        ("email" := Json.string)
+        ("displayName" := Json.string)
+        ("image" := Json.string)
 
 roomDecoder : Json.Decoder Room
 roomDecoder =

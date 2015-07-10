@@ -11,17 +11,16 @@ var ws = require('./ws.js');
 var rtc = require('./rtc.js');
 var fs = require('fs');
 var uuid = require('uuid');
-var twitter = require('twitter');
-var oauth = require('oauth');
 var util = require('util');
+var passport = require('passport');
+var TwitterStrategy = require('passport-twitter').Strategy;
+
 
 var port = process.env.PORT || 3000;
 var needsHttps = !process.env.PORT;
 var _twitterConsumerKey = process.env.TWITTER_CUSTOMER_KEY;
 var _twitterConsumerSecret = process.env.TWITTER_CUSTOMER_SECRET;
 
-var passport = require('passport');
-var TwitterStrategy = require('passport-twitter').Strategy;
 
 // Passport: TwitterのOAuth設定
 passport.use(new TwitterStrategy({
@@ -97,6 +96,14 @@ var loginCheck = function(req, res, next) {
       };
       storage.addUser(uid, user);
       req.session.user = uid;
+      next();
+    } else if(req.session.user) {//TODO guest for debug
+      storage.addUser(req.session.user, {
+        id: req.session.user,
+        name:req.session.user,
+        displayName:req.session.user,
+        image: "/default_profile.png"
+      });
       next();
     } else {
       if(req.url === '/') {
