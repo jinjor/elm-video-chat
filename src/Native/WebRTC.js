@@ -43,6 +43,7 @@
     var send = function(data) {
       data.room = room;
       data.from = clientId;
+      console.log('RTC send: ' + data.type);
       setTimeout(function() {
         localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", data.data));
       });
