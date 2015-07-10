@@ -56,6 +56,7 @@ html, body {
   right: 0;
   left: 0;
 	/*height: 50%;*/
+	pointer-events: none;
 }
 .chat-view {
 	/*position: absolute;
@@ -63,6 +64,7 @@ html, body {
   right: 0;*/
 	float: right;
 	margin-bottom: 0;
+	pointer-events: visible;
 }
 .chat-view.opened {
 	top: 0;
