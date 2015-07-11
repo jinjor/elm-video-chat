@@ -211,7 +211,6 @@
       f(mediaOptions);
     } else if(mediaType === 'video') {
       mediaOptions.video = true;
-      // mediaOptions.audio = true;
       f(mediaOptions);
     } else if(mediaType === 'screen') {
       getScreenId(function (error, sourceId, mediaOptions) {
@@ -235,9 +234,7 @@
 
         cm.addStream(clientId, mediaType, stream);
         peers.forEach(function(peerId) {
-          sendOfferToPeer(clientId, cm, send, peerId, stream, function() {
-
-          });
+          sendOfferToPeer(clientId, cm, send, peerId, stream, mediaType);
         });
         onLocalVideoURL(mediaType, URL.createObjectURL(stream));
 
@@ -246,12 +243,10 @@
 
   }
 
-  function sendOfferToPeer(clientId, cm, send, peerId, stream, cb) {
+  function sendOfferToPeer(clientId, cm, send, peerId, stream, mediaType) {
     if(peerId === clientId) {
       return;
     }
-    var isAudio = !!stream.getAudioTracks()[0];
-
     var pc = cm.getConnection(peerId);
     pc.onicecandidate = function(e) {
       if (e.candidate) {
@@ -276,7 +271,7 @@
             to: peerId,
             data: {
               offer: offer,
-              isAudio: isAudio
+              mediaType: mediaType
             }
           });
         }, onerror);
@@ -288,7 +283,7 @@
   function answerSDP(clientId, cm, send, e, onRemoteVideoURL, onAddConnection, onRemoveConnection) {
     var _from = e.from;
     var pc = cm.getConnection(_from);
-    var mediaType = e.data.isAudio ? "mic" : "video";//TODO
+    var mediaType = e.data.mediaType;
     pc.onicecandidate = function(e) {
       if (e.candidate) {
         send({
@@ -369,7 +364,7 @@
     ["mic", "video", "screen"].forEach(function(mediaType) {
       var stream = cm.getStream(clientId, mediaType);
       if(stream) {
-        sendOfferToPeer(clientId, cm, send, from, stream);
+        sendOfferToPeer(clientId, cm, send, from, stream, mediaType);
       }
     });
   }
