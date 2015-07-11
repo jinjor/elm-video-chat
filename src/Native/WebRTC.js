@@ -90,6 +90,7 @@
     };
     var _closeRemoteStream = function(from, data) {
       return Task.asyncFunction(function(callback) {
+        console.log(data);
         closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
           localRuntime.setTimeout(function(){
             localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
@@ -249,6 +250,7 @@
     if(peerId === clientId) {
       return;
     }
+    var isAudio = !!stream.getAudioTracks()[0];
 
     var pc = cm.getConnection(peerId);
     pc.onicecandidate = function(e) {
@@ -264,7 +266,7 @@
     pc.addStream(stream);
 
     pc.createOffer(function(offer) {
-      console.log('created offer', offer);
+      // console.log('created offer', offer);
 
       pc.setLocalDescription(
         new RTCSessionDescription(offer),
@@ -272,7 +274,10 @@
           send({
             type: 'offerSDP',
             to: peerId,
-            data: offer
+            data: {
+              offer: offer,
+              isAudio: isAudio
+            }
           });
         }, onerror);
       cb && cb();
@@ -283,7 +288,7 @@
   function answerSDP(clientId, cm, send, e, onRemoteVideoURL, onAddConnection, onRemoveConnection) {
     var _from = e.from;
     var pc = cm.getConnection(_from);
-    var mediaType = "video";//TODO
+    var mediaType = e.data.isAudio ? "mic" : "video";//TODO
     pc.onicecandidate = function(e) {
       if (e.candidate) {
         send({
@@ -299,17 +304,13 @@
     };
     pc.onremovestream = function(e) {
       console.log('onremovestream');
-      pc.close();
-      cm.removeConnection(_from);
-      cm.removeStream(_from, mediaType);
-
-      onRemoveConnection(_from, mediaType);
-      // roomSignal.ports.removeConnection.send([_from, mediaType]);
+      // console.log(e);
+      // cm.removeStream(_from, mediaType);
+      // onRemoveConnection(_from, mediaType);
     };
     onAddConnection(_from, mediaType);
-    // roomSignal.ports.addConnection.send([_from, mediaType]);
     pc.setRemoteDescription(
-      new RTCSessionDescription(e.data),
+      new RTCSessionDescription(e.data.offer),
       function() {
         pc.createAnswer(function(answer) {
           pc.setLocalDescription(
@@ -344,16 +345,16 @@
 
   function endStreaming(clientId, cm, send, mediaType) {
     var stream = cm.getStream(clientId, mediaType);
+    console.log(cm.getAllConnections(), mediaType);
     cm.getAllConnections().forEach(function(pc) {
       try {
+        console.log(stream);
         pc.removeStream(stream);
       } catch(e) {
         console.error(e);
       }
-      pc.close();
     });
     cm.removeStream(clientId, mediaType);
-    cm.removeAllConnections();
     send({
       type: 'endStream',
       to: clientId,
@@ -387,8 +388,6 @@
       pc.removeStream(stream);
       cm.removeStream(remoteClientId, mediaType);
     }
-    pc.close();
-    cm.removeConnection(remoteClientId);
     onRemoteVideoURL(remoteClientId, mediaType, "");
   }
 

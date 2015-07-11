@@ -5,7 +5,7 @@ import Json.Encode
 import Task exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, src)
+import Html.Attributes exposing (class, src, classList)
 import Html.Events exposing (..)
 import Http
 
@@ -311,12 +311,15 @@ view c =
     ]
   ]
 
-window : Html -> Html -> Bool -> Html
-window header body local =
-  let face = if local then "panel-primary" else "panel-default"
-  in div [class "col-sm-6 col-md-6"] [
-        div [class ("panel " ++ face)] [header, body]
-      ]
+window : Html -> Html -> Bool -> Bool -> Html
+window header body local hidden =
+  let
+    face = if local then "panel-primary" else "panel-default"
+    classes = [("hidden", hidden), ("col-sm-6", True), ("col-md-6", True)]
+  in
+    div [classList classes] [
+      div [class ("panel " ++ face)] [header, body]
+    ]
 
 roomTitle c = h2 [ class "room-name" ] [text c.roomName]
 
@@ -418,7 +421,8 @@ mediaWindowView c mediaType title videoUrl local =
     buttons =
       if | local -> [windowCloseButton c mediaType, fullscreenButton c.address videoUrl]
          | otherwise -> [fullscreenButton c.address videoUrl]
-  in window (windowHeader title buttons) videoHtml local
+    hidden = if mediaType == "mic" then True else False
+  in window (windowHeader title buttons) videoHtml local hidden
 
 
 -- Main
