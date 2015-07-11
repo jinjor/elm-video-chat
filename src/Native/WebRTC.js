@@ -102,7 +102,7 @@
       peers = listToArray(peers);
       return Task.asyncFunction(function(callback) {
         offerSDP(clientId, cm, send, mediaType, peers, function onLocalVideoURL(mediaType, url) {
-          console.log([mediaType, url]);
+          // console.log([mediaType, url]);
           localRuntime.notify(_onLocalVideoURL.id, Utils.Tuple2(mediaType, url));
         });
         callback(Task.succeed(Utils.Tuple0));
@@ -210,6 +210,7 @@
       f(mediaOptions);
     } else if(mediaType === 'video') {
       mediaOptions.video = true;
+      // mediaOptions.audio = true;
       f(mediaOptions);
     } else if(mediaType === 'screen') {
       getScreenId(function (error, sourceId, mediaOptions) {
@@ -227,6 +228,10 @@
 
     function f(mediaOptions) {
       navigator.getUserMedia(mediaOptions, function(stream) {
+        console.log(stream);
+        console.log(stream.getAudioTracks());
+        console.log(stream.getVideoTracks());
+
         cm.addStream(clientId, mediaType, stream);
         peers.forEach(function(peerId) {
           sendOfferToPeer(clientId, cm, send, peerId, stream, function() {

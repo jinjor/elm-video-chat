@@ -408,12 +408,16 @@ remoteMediaWindowView address c connection =
 
 mediaWindowView : Context -> String -> String -> String -> Bool -> Html
 mediaWindowView c mediaType title videoUrl local =
-  let videoHtml = video [
-            src videoUrl,
-            Html.Attributes.attribute "autoplay" ""
-          ] []
-      buttons = if | local -> [windowCloseButton c mediaType, fullscreenButton c.address videoUrl]
-                   | otherwise -> [fullscreenButton c.address videoUrl]
+  let
+    attrs = [
+        src videoUrl
+        , Html.Attributes.attribute "autoplay" ""
+      ] ++ (if local then [Html.Attributes.attribute "muted" ""] else [])
+    videoHtml =
+      video attrs []
+    buttons =
+      if | local -> [windowCloseButton c mediaType, fullscreenButton c.address videoUrl]
+         | otherwise -> [fullscreenButton c.address videoUrl]
   in window (windowHeader title buttons) videoHtml local
 
 
