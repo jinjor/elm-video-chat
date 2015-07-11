@@ -275,7 +275,6 @@
             }
           });
         }, onerror);
-      cb && cb();
     }, onerror);
   }
 
