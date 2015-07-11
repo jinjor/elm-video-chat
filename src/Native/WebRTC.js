@@ -390,8 +390,10 @@
     if (!window.RTCPeerConnection) {
       if (window.mozRTCPeerConnection) {
         window.RTCPeerConnection = window.mozRTCPeerConnection;
-      } else if (webkitRTCPeerConnection) {
+      } else if (window.webkitRTCPeerConnection) {
         window.RTCPeerConnection = window.webkitRTCPeerConnection;
+      } else {
+        alert('this browser does not support WebRTC.');
       }
     }
 
