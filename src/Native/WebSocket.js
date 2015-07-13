@@ -60,7 +60,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
                   tryStartReconnecting();
                 }
               }, 3 * 1000);
-            }, 1 * 10 * 1000);
+            }, 1 * 10 * 1000);// timeout on Heroku = 30s
           };
           connection.onclose = function() {
             localRuntime.notify(opened.id, false);
