@@ -60,7 +60,7 @@ Elm.Native.WebSocket.make = function(localRuntime) {
                   tryStartReconnecting();
                 }
               }, 3 * 1000);
-            }, 1 * 60 * 1000);
+            }, 1 * 10 * 1000);
           };
           connection.onclose = function() {
             localRuntime.notify(opened.id, false);
