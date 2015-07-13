@@ -2,6 +2,11 @@
 module.exports = function(socket, storage, session, user) {
 
   socket.on('message', function(s) {
+    //TODO refactor
+    if(s === 'Ping') {
+      return;
+    }
+    
     var data = JSON.parse(s);
     // console.log(data);
     if (data.type === 'join') {

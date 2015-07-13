@@ -22,8 +22,6 @@ var _twitterConsumerKey = process.env.TWITTER_CUSTOMER_KEY;
 var _twitterConsumerSecret = process.env.TWITTER_CUSTOMER_SECRET;
 var isHeroku = !!process.env.PORT;
 
-
-// Passport: TwitterのOAuth設定
 passport.use(new TwitterStrategy({
     consumerKey: _twitterConsumerKey,
     consumerSecret: _twitterConsumerSecret,
@@ -163,6 +161,13 @@ var wss = new WebSocketServer({
 });
 
 wss.on('connection', function(socket) {
+  socket.on('message', function(s) {
+    if(s === 'Ping') {
+      // console.log('ping');
+      socket.send('Pong');
+    }
+  });
+
   var request = socket.upgradeReq;
   var response = {writeHead: {}};
   sessionHandler(request, response, function (err) {
@@ -177,8 +182,9 @@ wss.on('connection', function(socket) {
       ws(socket, storage, globalSession, user);
     });
   });
-
 });
+
+
 
 // listen
 server.listen(port);

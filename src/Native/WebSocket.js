@@ -15,6 +15,8 @@ Elm.Native.WebSocket.make = function(localRuntime) {
 
     var connection = null;
     var interval = null;
+    var pingInterval = null;
+    var pingFlag = false;
     var connect = function(url) {
       return Task.asyncFunction(function(callback) {
         _connect(url, callback);
@@ -24,6 +26,21 @@ Elm.Native.WebSocket.make = function(localRuntime) {
       if(!connection) {
         try {
           connection = new WebSocket(url, ['soap', 'xmpp']);
+          var tryStartReconnecting = function() {
+            if(!interval) {
+              interval = setInterval(function() {
+                console.log('trying reconnect...');
+                _connect(url);
+              }, 3000);
+            }
+          };
+          var stopPing = function() {
+            if(pingInterval) {
+              clearInterval(pingInterval);
+              pingInterval = null;
+            }
+          };
+
           connection.onopen = function() {
             localRuntime.notify(opened.id, true);
             callback && callback(Task.succeed(Utils.Tuple0));
@@ -31,19 +48,33 @@ Elm.Native.WebSocket.make = function(localRuntime) {
               clearInterval(interval);
               interval = null;
             }
+            pingInterval = setInterval(function() {
+              // console.log('ping');
+              connection.send('Ping');
+              pingFlag = true;
+              setTimeout(function() {
+                if(pingFlag) {
+                  pingFlag = false;
+                  stopPing();
+                  connection = null;
+                  tryStartReconnecting();
+                }
+              }, 3 * 1000);
+            }, 1 * 60 * 1000);
           };
           connection.onclose = function() {
             localRuntime.notify(opened.id, false);
-            if(!interval) {
-              interval = setInterval(function() {
-                console.log('trying reconnect...');
-                _connect(url);
-              }, 3000);
-            }
+            stopPing();
             connection = null;
+            tryStartReconnecting();
           };
           connection.onmessage = function(e) {
-            localRuntime.notify(message.id, e.data);
+            if(e.data === 'Pong') {
+              // console.log('pong');
+              pingFlag = false;
+            } else {
+              localRuntime.notify(message.id, e.data);
+            }
           };
         } catch(e) {
           console.log(e);

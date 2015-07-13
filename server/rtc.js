@@ -2,6 +2,12 @@
 module.exports = function(socket, storage, session) {
 
   socket.on('message', function(s) {
+    //TODO refactor
+    if(s === 'Ping') {
+      return;
+    }
+
+
     var data = JSON.parse(s);
     console.log(data.type);
     if (data.type === 'offerSDP') {
