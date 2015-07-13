@@ -71,7 +71,7 @@ init = {
 
 
 update : Action -> Model -> Model
-update action model = case log "WebRTC.update" action of
+update action model = case action of
   CloseWindow target ->
     { model |
       connections <- Set.remove target model.connections
@@ -150,7 +150,7 @@ actions = Signal.mergeMany [
   ]
 
 decode : String -> Maybe Action
-decode s = case Json.decodeString decoder (log "WebRTC.decode" s) of
+decode s = case Json.decodeString decoder s of
   Ok decoded -> case decoded of
     Undefined -> Nothing
     _ -> Just decoded
