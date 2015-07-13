@@ -333,7 +333,7 @@
     var pc = cm.getConnection(e.from);
     console.log('addCandidate:', JSON.stringify(e.data));
     if (e.data.candidate) {
-      pc.addIceCandidate(new RTCIceCandidate(e.data.candidate));
+      pc.addIceCandidate(new RTCIceCandidate(e.data));
     }
   }
 
