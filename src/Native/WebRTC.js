@@ -250,11 +250,13 @@
     var pc = cm.getConnection(peerId);
     pc.onicecandidate = function(e) {
       if (e.candidate) {
-        send({
-          type: 'offerCandidate',
-          to: peerId,
-          data: e.candidate
-        });
+        setTimeout(function(){
+          send({
+            type: 'offerCandidate',
+            to: peerId,
+            data: e.candidate
+          });
+        }, 2000);
       }
     };
 
