@@ -3,9 +3,10 @@
 module.exports = function(app, staticRouter, storage, session, ws) {
   var iceServers =  [{
     url: 'stun:stun.l.google.com:19302'
-  }/*, {
-    url: 'stun:stun.anyfirewall.com:3478'
-  }*/];
+  }, {
+    url: 'turn:homeo@turn.bistri.com:80',
+    credential: 'homeo'
+  }];
   app.get('/room/:id', function(req, res, next) {
     //TODO
     if(!req.session.user) {

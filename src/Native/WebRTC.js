@@ -260,10 +260,7 @@
       }
     };
 
-    setTimeout(function(){
-      pc.addStream(stream);
-    }, 5000);
-
+    pc.addStream(stream);
 
     pc.createOffer(function(offer) {
       // console.log('created offer', offer);
