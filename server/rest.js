@@ -37,7 +37,6 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       res.redirect('/');
       return;
     }
-    console.log(req.session.passport.user);
     var T = new Twit({
         consumer_key: req.session.passport.user.twitterConsumerKey
       , consumer_secret: req.session.passport.user.twitterConsumerSecret
@@ -45,6 +44,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
     });
     var roomId = uuid.v1();
+    session.getRoom(roomId) || session.createPrivateRoom(roomId);
     var to = req.body.invited;
 
     invite(T, req.session.user, to, roomId, function(e) {
@@ -76,13 +76,16 @@ module.exports = function(app, staticRouter, storage, session, ws) {
         clientIds.forEach(function(clientId) {
           users[clientId] = session.users[clientId];
         });
+        var _room = {
+          id: roomId,
+          private: room.private,
+          members: [],//TODO
+          peers: clientIds,
+          users: users
+        };
         res.send({
           user: user,
-          room: {
-            id: roomId,
-            peers: clientIds,
-            users: users
-          },
+          room: _room,
           iceServers: iceServers
         });
       });
@@ -97,8 +100,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       return;
     }
     storage.getUser(req.session.user).then(function(user) {
-      console.log(user);
-
+      // console.log(user);
       var rooms = session.getRooms();
       var _rooms = rooms.map(function(room) {
         var users = {};
@@ -108,9 +110,14 @@ module.exports = function(app, staticRouter, storage, session, ws) {
         });
         return {
           id: room.id,
+          private : room.private,
+          members: [],//TODO
           peers: clientIds,
           users: users
         };
+      });
+      _rooms = _rooms.filter(function(room) {
+        return !room.private;
       });
       res.send({
         rooms: _rooms,

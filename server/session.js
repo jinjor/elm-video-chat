@@ -1,8 +1,10 @@
 
-function Room(id) {
+function Room(id, private, members) {
   this.id = id;
   this.clients = {};
   this.messages = [];
+  this.private = private;
+  this.members = members;
 }
 Room.prototype.addClient = function(id, socket) {
   socket.__id = id;
@@ -56,13 +58,16 @@ var getRooms = function() {
   });
 };
 var createRoom = function(roomId) {
-  rooms[roomId] = new Room(roomId);
+  rooms[roomId] = new Room(roomId, false, []);
 };
-
+var createPrivateRoom = function(roomId) {
+  rooms[roomId] = new Room(roomId, true, []);
+};
 
 module.exports = {
   users: {},
   getRoom: getRoom,
   getRooms: getRooms,
-  createRoom: createRoom
+  createRoom: createRoom,
+  createPrivateRoom: createPrivateRoom
 };
