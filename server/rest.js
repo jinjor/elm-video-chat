@@ -3,6 +3,7 @@ var Twit = require('twit');
 
 
 module.exports = function(app, staticRouter, storage, session, ws) {
+
   function invite(T, user, to, roomId, cb) {
     var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
     T.post('direct_messages/new', {
@@ -14,6 +15,78 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       cb(err, data);
     });
   }
+
+  function loadFollowers(T, user, cursor, cb) {
+    var options =
+    T.get('followers/list', {
+      user_id : user.twitterId,
+      skip_status: true,
+      include_user_entities: false,
+      cursor: cursor,
+      count: 200
+    }, function(err, data, response) {
+      if(err) {
+        cb(err, []);
+        return;
+      }
+      user.followers = data.users.reduce(function(memo, _user) {
+        var data = {
+          id: _user.id,
+          name: _user.screen_name,
+          screen_name: _user.screen_name
+        };
+        memo[_user.screen_name + _user.screen_name] = data;
+        return memo;
+      }, user.followers || {});
+      if(data.next_cursor) {
+        loadFollowers(T, user, data.next_cursor, cb);
+      } else {
+        cb();
+      }
+    });
+
+  }
+
+  function searchFollowers(T, user, q, cb) {
+    if(!user.followers) {
+      loadFollowers(T, user, -1, function() {
+        console.log(user.followers);
+        f();
+      });
+    } else {
+      f();
+    }
+    function f() {
+      var regex = new RegExp('.*' + q + '.*');
+      var followers = user.followers;
+      var filtered = Object.keys(followers).filter(function(key) {
+        console.log(key);
+        return !!key.match(regex);
+      }).map(function(key) {
+        return followers[key];
+      });
+      cb(null, filtered);
+
+      // T.get('users/search', {
+      //   user_id : user.twitterId,
+      //   q: q,
+      //   count: 100,
+      //   include_entities: false
+      // }, function(err, data, response) {
+      //   data = data.filter(function(user) {
+      //     console.log(user)
+      //     return followers[user.id_str];
+      //   });
+      //   console.log(followers, data);
+      //   // TODO followers でフィルタリング
+      //   cb(err, []);
+      // });
+    }
+
+  }
+
+
+
 
   var iceServers =  [{
     url: 'stun:stun.l.google.com:19302'
@@ -96,6 +169,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
     }
   });
   app.get('/api/rooms', function(req, res) {
+
     //TODO
     if(!req.session.user) {
       res.redirect('/');
@@ -121,10 +195,29 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       _rooms = _rooms.filter(function(room) {
         return !room.private;
       });
+
+      var T = new Twit({
+          consumer_key: req.session.passport.user.twitterConsumerKey
+        , consumer_secret: req.session.passport.user.twitterConsumerSecret
+        , access_token: req.session.passport.user.twitterAccessToken
+        , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+      });
+
+      if(!user.followers) {
+        loadFollowers(T, user, -1, function() {
+          // res.send({
+          //   rooms: _rooms,
+          //   user: user,
+          //   followers: user.followers
+          // });
+        });
+      }
       res.send({
         rooms: _rooms,
-        user: user
+        user: user,
+        recentlyInvited: []//TODO
       });
+
     });
 
   });

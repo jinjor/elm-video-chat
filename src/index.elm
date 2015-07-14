@@ -11,28 +11,51 @@ import Lib.URI exposing(encodeURI, decodeURI)
 import Dict exposing (Dict)
 
 import Lib.API exposing (..)
+import Lib.Typeahead as Typeahead
 
-type alias Context =
+
+type alias Model =
   { roomName : String
   , inviteName : String
+  , typeahead : Typeahead.Model User
   , rooms: List Room
   , me: User }
 
 --- Model
-initialContext : Context
+initialContext : Model
 initialContext =
   { roomName = ""
   , inviteName = ""
+  , typeahead = Typeahead.init "" (\user -> user.name) userOptionToHtml fetchOptions
   , rooms = []
   , me = { name="", displayName="", image="" } }
 
-context : Signal Context
-context = Signal.foldp update initialContext actions.signal
+-- context : Signal Context
+-- context = Signal.foldp update initialContext actions.signal
+
+state : Signal (Model, Task () Action)
+state = Signal.foldp (\action (model, _) -> update action model)
+                (initialContext, Task.succeed NoOp) actions.signal
+
 
 port fetchRoom : Task Http.Error ()
 port fetchRoom = getRooms
       `andThen` (\initData -> (Signal.send actions.address (Init initData)))
       `onError` (\err -> log "err" (succeed ()))
+
+-- TODO
+fetchOptions : String -> Task () (List User)
+fetchOptions s = Task.succeed [{
+  name = s
+  , displayName = s
+  , image = ""
+  }, {
+  name = s ++ s
+  , displayName = s ++ s
+  , image = ""
+  }]
+
+
 
 --- Action
 type Action
@@ -40,59 +63,67 @@ type Action
   | Init InitialRoomsData
   | UpdateRoomName String
   | UpdateInviteName String
+  | TypeaheadAction (Typeahead.Action User)
 
-update : Action -> Context -> Context
-update action context =
+update : Action -> Model -> (Model, Task () Action)
+update action model =
     case action of
-      Init initData -> { context |
+      Init initData -> ({ model |
         me <- initData.user,
         rooms <- initData.rooms
-      }
-      UpdateRoomName roomName -> { context |
+      }, Task.succeed NoOp)
+      UpdateRoomName roomName -> ({ model |
         roomName <- roomName
-      }
-      UpdateInviteName inviteName -> { context |
+      }, Task.succeed NoOp)
+      UpdateInviteName inviteName -> ({ model |
         inviteName <- inviteName
-      }
+      }, Task.succeed NoOp)
+      TypeaheadAction action ->
+        let (newModel, task) = Typeahead.update action model.typeahead
+        in ({ model |
+              typeahead <- newModel
+            }, Task.map TypeaheadAction task)
+
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
 
 --- View
-view : Address Action -> Context -> Html
-view address c = div [] [
-    Header.header { user = c.me, connected = True },
+view : Address Action -> Model -> Html
+view address model = div [] [
+    Header.header { user = model.me, connected = True },
     div [ class "container" ] [
-      ul [class "list-unstyled clearfix col-md-12"] (roomViews c)
-    , createRoomView address c
+      ul [class "list-unstyled clearfix col-md-12"] (roomViews model)
+    , createRoomView address model
     , hr [] []
-    , inviteView address c
+    , inviteView address model
+    , Typeahead.view (Signal.forwardTo address TypeaheadAction) model.typeahead
     ]
   ]
 
-createRoomView : Address Action -> Context -> Html
-createRoomView address c =
+createRoomView : Address Action -> Model -> Html
+createRoomView address model =
   let input_ = div [class "form-group"] [
         label [] [text "New Room"]
         , input [ name ""
           , class "form-control"
-          , value c.roomName
+          , value model.roomName
           , on "input" targetValue (Signal.message address << UpdateRoomName)
         ] []
       ]
       submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
-      form_ = Html.form [class "form-inline", action ("/room/" ++ encodeURI(c.roomName)), method "GET"] [input_, submit_]
+      form_ = Html.form [class "form-inline", action ("/room/" ++ encodeURI(model.roomName)), method "GET"] [input_, submit_]
   in div [] [form_]
 
 
-inviteView : Address Action -> Context -> Html
-inviteView address c =
+inviteView : Address Action -> Model -> Html
+inviteView address model =
   let input_ = div [class "form-group"] [
         label [] [text "Invite"]
         , text "@"
         , input [ name "invited"
           , placeholder "Twitter ID"
           , class "form-control"
-          , value c.inviteName
+          , value model.inviteName
           , on "input" targetValue (Signal.message address << UpdateInviteName)
         ] []
       ]
@@ -101,7 +132,7 @@ inviteView address c =
   in div [] [form_]
 
 
-roomViews c = List.map roomView c.rooms
+roomViews model = List.map roomView model.rooms
 
 userOf : Dict PeerId User -> PeerId -> User
 userOf d peerId = case Dict.get peerId d of
@@ -127,7 +158,10 @@ roomView room =
 peerView : User -> Html
 peerView peer = li [] [text peer.name]
 
+userOptionToHtml : User -> Html
+userOptionToHtml user = text user.name
+
 
 --- Main
 main : Signal Html
-main = Signal.map (\c -> view actions.address c) context
+main = Signal.map (view actions.address << fst) state
