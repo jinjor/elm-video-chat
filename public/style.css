@@ -31,10 +31,6 @@ html, body {
 	margin-top: -5px;
   margin-bottom: -5px;
 }
-.video-window.mic {
-	display: none;
-}
-
 .status-panel h2 {
 	margin-top: 10px;
 	margin-bottom: 15px;

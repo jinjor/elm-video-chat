@@ -1,6 +1,19 @@
+var uuid = require('uuid');
+var Twit = require('twit');
 
 
 module.exports = function(app, staticRouter, storage, session, ws) {
+  function invite(T, user, to, roomId, cb) {
+    T.post('direct_messages/new', {
+        user_id : user.twitterId,
+        screen_name: to,
+        text: 'Invitation to Vity2! ' + session.rootURL + '/room/' + roomId
+      }, function(err, data, response) {
+      // console.log(data)
+      cb(err, data);
+    });
+  }
+
   var iceServers =  [{
     url: 'stun:stun.l.google.com:19302'
   }, {
@@ -13,11 +26,39 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       res.redirect('/');
       return;
     }
-
     var roomId = req.params.id;
     session.getRoom(roomId) || session.createRoom(roomId);
     req.url = '/room.html';
     staticRouter(req, res, next);
+  });
+  app.post('/invite', function(req, res, next) {
+    //TODO
+    if(!req.session.user) {
+      res.redirect('/');
+      return;
+    }
+    console.log(req.session.passport.user);
+    var T = new Twit({
+        consumer_key: req.session.passport.user.twitterConsumerKey
+      , consumer_secret: req.session.passport.user.twitterConsumerSecret
+      , access_token: req.session.passport.user.twitterAccessToken
+      , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+    });
+    var roomId = uuid.v1();
+    var to = req.body.invited;
+
+    invite(T, req.session.user, to, roomId, function(e) {
+      if(e) {
+        console.log(e);
+        var errorMessage = 'error!';
+        if(e.code === 150) {
+          errorMessage = 'The user @' + to + ' does not exist or is not following you.';
+        }
+        res.send(errorMessage);
+        return;
+      }
+      res.redirect('/room/' + roomId);
+    });
   });
   app.get('/api/room/:id', function(req, res) {
     var roomId = req.params.id;

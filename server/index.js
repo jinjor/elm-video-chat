@@ -14,7 +14,7 @@ var uuid = require('uuid');
 var util = require('util');
 var passport = require('passport');
 var TwitterStrategy = require('passport-twitter').Strategy;
-
+var Twit = require('twit');
 
 var port = process.env.PORT || 3000;
 var needsHttps = !process.env.PORT;
@@ -27,9 +27,13 @@ passport.use(new TwitterStrategy({
     consumerSecret: _twitterConsumerSecret,
     callbackURL: "/oauth/twitter/callback"
   }, function(token, tokenSecret, profile, done) {
-  process.nextTick(function() {
-    return done(null, profile);
-  });
+    profile.twitterConsumerKey = _twitterConsumerKey;
+    profile.twitterConsumerSecret = _twitterConsumerSecret;
+    profile.twitterAccessToken = token;
+    profile.twitterAccessTokenSecret = tokenSecret;
+    process.nextTick(function() {
+      return done(null, profile);
+    });
 }));
 passport.serializeUser(function(user, done) {
   done(null, user);
@@ -131,7 +135,7 @@ app.use(staticRouter);
 
 // setup REST
 
-
+globalSession.rootURL = isHeroku ? 'https://vity2.herokuapp.com' : 'https://localhost:' + port;//TODO
 rest(app, staticRouter, storage, globalSession);
 
 var server = https.createServer({
