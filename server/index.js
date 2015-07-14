@@ -109,7 +109,13 @@ var loginCheck = function(req, res, next) {
       };
       storage.addUser(uid, user);
       req.session.user = uid;
-      next();
+      if (req.session.redirectURL) {
+        var url = req.session.redirectURL;
+        req.session.redirectURL = null;
+        res.redirect(url);
+      } else {
+        next();
+      }
     } else if(req.session.user) {//TODO guest for debug
       storage.addUser(req.session.user, {
         id: req.session.user,
@@ -117,7 +123,13 @@ var loginCheck = function(req, res, next) {
         displayName:req.session.user,
         image: "/default_profile.png"
       });
-      next();
+      if (req.session.redirectURL) {
+        var url = req.session.redirectURL;
+        req.session.redirectURL = null;
+        res.redirect(url);
+      } else {
+        next();
+      }
     } else {
       if(req.url === '/') {
         req.url = '/login.html';

@@ -4,10 +4,11 @@ var Twit = require('twit');
 
 module.exports = function(app, staticRouter, storage, session, ws) {
   function invite(T, user, to, roomId, cb) {
+    var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
     T.post('direct_messages/new', {
         user_id : user.twitterId,
         screen_name: to,
-        text: 'Invitation to Vity2! ' + session.rootURL + '/room/' + roomId
+        text: 'Invitation to Vity2! ' + url
       }, function(err, data, response) {
       // console.log(data)
       cb(err, data);
@@ -23,6 +24,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
   app.get('/room/:id', function(req, res, next) {
     //TODO
     if(!req.session.user) {
+      req.session.redirectURL = req.url;
       res.redirect('/');
       return;
     }
