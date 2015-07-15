@@ -19,6 +19,7 @@ type Action a
   | Select Int
   | Focus
   | Blur
+  | Blur2
 
 type alias Model a = {
     field : String
@@ -48,7 +49,7 @@ init initialField toField toHtml fetch = {
 update : Action a -> Model a -> (Model a, Maybe (Task () (Action a)))
 update action model =
   let
-    newModel = case action of
+    newModel = case log "typeahead action" action of
       NoOp -> model
       UpdateField field -> { model |
         field <- field
@@ -66,11 +67,14 @@ update action model =
         focused <- True
       }
       Blur -> { model |
-        selected <- -1,
+        selected <- -1
+      }
+      Blur2 -> { model |
         focused <- False
       }
     task = case action of
       UpdateField field -> if field == "" then Nothing else Just <| Task.map Data (model.fetch field)
+      Blur -> Just <| Task.sleep 400 `andThen` (\_ -> Task.succeed Blur2)
       _ -> Nothing
   in (newModel, task)
 
@@ -106,7 +110,7 @@ view address model =
         class "form-control"
       , onKeyDown address KeyDown
       , onFocus address Focus
-      -- , onBlur address Blur
+      , onBlur address Blur
       , on "input" targetValue (Signal.message address << UpdateField)
       , value <| displayField model
       ] []
@@ -119,7 +123,7 @@ view address model =
 optionsView : Address (Action a) -> Model a -> Int -> a -> Html
 optionsView address model index obj =
   li [
-    class (if index == model.selected then "typeahead-selected" else "")
+    class ("typeahead-option" ++ (if index == model.selected then " typeahead-selected" else ""))
   , onClick address (Select index)
   ] [
     model.toHtml obj

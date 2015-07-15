@@ -98,7 +98,6 @@ view address model = div [] [
       ul [class "list-unstyled clearfix col-md-12"] (roomViews model)
     , createRoomView address model
     , hr [] []
-    , inviteView address model
     , typeaheadView address model
     ]
   ]
@@ -108,30 +107,19 @@ typeaheadView : Address Action -> Model -> Html
 typeaheadView address model =
   let input_ = div [class "form-group"] [
         label [] [text "Invite"]
-        , text "@"
+        -- , text "@"
         , Typeahead.view (Signal.forwardTo address TypeaheadAction) model.typeahead
       ]
-      submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
-      form_ = div [action ("/invite"), method "POST"] [input_, submit_]
+      -- submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      -- form_ = Html.form [action ("/invite"), method "POST"] [input_, submit_]
+
+      submit_ = Html.form [
+        action ("/invite")
+      , method "POST"
+      ] [input [ type' "submit", class "btn btn-primary", value "Create" ] []]
+      form_ = div [] [input_, submit_]
+
   in div [] [form_]
-
-inviteView : Address Action -> Model -> Html
-inviteView address model =
-  let input_ = div [class "form-group"] [
-        label [] [text "Invite"]
-        , text "@"
-        , input [ name "invited"
-          , placeholder "Twitter ID"
-          , class "form-control"
-          , value model.inviteName
-          , on "input" targetValue (Signal.message address << UpdateInviteName)
-        ] []
-      ]
-      submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
-      form_ = Html.form [class "form-inline", action ("/invite"), method "POST"] [input_, submit_]
-  in div [] [form_]
-
-
 
 createRoomView : Address Action -> Model -> Html
 createRoomView address model =

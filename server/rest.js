@@ -38,7 +38,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
       //TODO
       var initial = {};
-      initial[user.name + user.displayName] = {
+      initial[user.name + ' ' + user.displayName] = {
         name: user.displayName,
         screen_name: user.name,
         profile_image_url: user.image
@@ -51,7 +51,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
           screen_name: _user.screen_name,
           profile_image_url: _user.profile_image_url
         };
-        memo[_user.screen_name + _user.screen_name] = data;
+        memo[_user.screen_name + ' ' + _user.screen_name] = data;
         return memo;
       }, user.followers || initial);
       if(data.next_cursor) {
