@@ -17,8 +17,10 @@ var getRooms = function() {
 };
 var users = {};
 var addUser = function(id, user) {
-  users[id] = user;
-  return Promise.resolve(user);
+  if(!users[id]) {// better checking outside
+    users[id] = user;
+  }
+  return Promise.resolve(users[id]);
 };
 var getUser = function(id) {
   var user = users[id];

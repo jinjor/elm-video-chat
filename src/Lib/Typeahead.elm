@@ -45,7 +45,7 @@ init initialField toField toHtml fetch = {
 
 -- Update
 
-update : Action a -> Model a -> (Model a, Task () (Action a))
+update : Action a -> Model a -> (Model a, Maybe (Task () (Action a)))
 update action model =
   let
     newModel = case action of
@@ -70,8 +70,8 @@ update action model =
         focused <- False
       }
     task = case action of
-      UpdateField field -> Task.map Data (model.fetch field)
-      _ -> Task.succeed NoOp
+      UpdateField field -> if field == "" then Nothing else Just <| Task.map Data (model.fetch field)
+      _ -> Nothing
   in (newModel, task)
 
 selectOption : Model a -> Int -> Model a
@@ -106,7 +106,7 @@ view address model =
         class "form-control"
       , onKeyDown address KeyDown
       , onFocus address Focus
-      , onBlur address Blur
+      -- , onBlur address Blur
       , on "input" targetValue (Signal.message address << UpdateField)
       , value <| displayField model
       ] []

@@ -37,6 +37,9 @@ getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" +
 getRooms : Task Http.Error InitialRoomsData
 getRooms = nocacheGet initialRoomsDataDecoder "/api/rooms"
 
+searchUser : String -> Task Http.Error (List User)
+searchUser q = nocacheGet (Json.list userDecoder) ("/api/search-user/" ++ q)
+
 
 initialDataDecoder : Json.Decoder InitialData
 initialDataDecoder = Json.object3 (\user room iceServers -> { user=user, room=room, iceServers=iceServers })

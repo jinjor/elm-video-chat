@@ -33,13 +33,16 @@ initialContext =
 -- context : Signal Context
 -- context = Signal.foldp update initialContext actions.signal
 
-state : Signal (Model, Task () Action)
+state : Signal (Model, Maybe (Task () Action))
 state = Signal.foldp (\action (model, _) -> update action model)
-                (initialContext, Task.succeed NoOp) actions.signal
+                (initialContext, Nothing) actions.signal
 
 
 port runState : Signal (Task () ())
-port runState = Signal.map (\(_, task) -> task `andThen` (\action -> Signal.send actions.address action)) state
+port runState = Signal.map (\(_, maybeTask) -> case maybeTask of
+      Just task -> task `andThen` Signal.send actions.address
+      Nothing -> Task.succeed ()
+      ) state
 
 
 
@@ -51,15 +54,7 @@ port fetchRoom = getRooms
 
 -- TODO
 fetchOptions : String -> Task () (List User)
-fetchOptions s = Task.succeed [{
-  name = "456"
-  , displayName = "123"
-  , image = ""
-  }, {
-  name = s ++ s
-  , displayName = s ++ s
-  , image = ""
-  }]
+fetchOptions q = searchUser q `onError` (\err -> log "err" (succeed []))
 
 
 
@@ -71,28 +66,26 @@ type Action
   | UpdateInviteName String
   | TypeaheadAction (Typeahead.Action User)
 
-noTask : Task () Action
-noTask = Task.succeed NoOp
 
-update : Action -> Model -> (Model, Task () Action)
+update : Action -> Model -> (Model, Maybe (Task () Action))
 update action model =
     case action of
-      NoOp -> (model, noTask)
+      NoOp -> (model, Nothing)
       Init initData -> (,) { model |
         me <- initData.user,
         rooms <- initData.rooms
-      } noTask
+      } Nothing
       UpdateRoomName roomName -> (,) { model |
         roomName <- roomName
-      } noTask
+      } Nothing
       UpdateInviteName inviteName -> (,) { model |
         inviteName <- inviteName
-      } noTask
+      } Nothing
       TypeaheadAction action ->
-        let (newModel, task) = Typeahead.update action model.typeahead
+        let (newModel, maybeTask) = Typeahead.update action model.typeahead
         in (,) { model |
               typeahead <- newModel
-            } (Task.map TypeaheadAction task)
+            } (Maybe.map (Task.map TypeaheadAction) maybeTask)
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
@@ -182,7 +175,12 @@ peerView : User -> Html
 peerView peer = li [] [text peer.name]
 
 userOptionToHtml : User -> Html
-userOptionToHtml user = text user.name
+userOptionToHtml user =
+  div [class "twitter-user"] [
+    img [class "twitter-user-image", src user.image] []
+  , span [class "twitter-user-name"] [text user.displayName]
+  , span [class "twitter-user-account"] [text <| "@" ++ user.name]
+  ]
 
 
 --- Main

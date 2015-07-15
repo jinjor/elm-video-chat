@@ -10,7 +10,20 @@ html, body {
 .typeahead .typeahead-selected {
 	background-color: #55acee
 }
-
+.twitter-user {
+	padding: 2px;
+}
+.twitter-user-image {
+	border-radius: 4px;
+}
+.twitter-user-name {
+	font-weight: bold;
+	margin-left: 4px;
+}
+.twitter-user-account {
+	color: #aaa;
+	margin-left: 2px;
+}
 
 .header-offline {
 	color: #e66 !important;

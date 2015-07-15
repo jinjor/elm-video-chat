@@ -4,20 +4,25 @@ var Twit = require('twit');
 
 module.exports = function(app, staticRouter, storage, session, ws) {
 
+  // for safety
+  // function invite(T, user, to, roomId, cb) {
+  //   var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
+  //   T.post('direct_messages/new', {
+  //       user_id : user.twitterId,
+  //       screen_name: to,
+  //       text: 'Invitation to Vity2! ' + url
+  //     }, function(err, data, response) {
+  //     // console.log(data)
+  //     cb(err, data);
+  //   });
+  // }
   function invite(T, user, to, roomId, cb) {
-    var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
-    T.post('direct_messages/new', {
-        user_id : user.twitterId,
-        screen_name: to,
-        text: 'Invitation to Vity2! ' + url
-      }, function(err, data, response) {
-      // console.log(data)
-      cb(err, data);
-    });
+    cb();
   }
 
   function loadFollowers(T, user, cursor, cb) {
-    var options =
+    //TODO followers && friends
+
     T.get('followers/list', {
       user_id : user.twitterId,
       skip_status: true,
@@ -29,15 +34,26 @@ module.exports = function(app, staticRouter, storage, session, ws) {
         cb(err, []);
         return;
       }
+      // console.log(data.users[0]);
+
+      //TODO
+      var initial = {};
+      initial[user.name + user.displayName] = {
+        name: user.displayName,
+        screen_name: user.name,
+        profile_image_url: user.image
+      };
+
       user.followers = data.users.reduce(function(memo, _user) {
         var data = {
           id: _user.id,
-          name: _user.screen_name,
-          screen_name: _user.screen_name
+          name: _user.name,
+          screen_name: _user.screen_name,
+          profile_image_url: _user.profile_image_url
         };
         memo[_user.screen_name + _user.screen_name] = data;
         return memo;
-      }, user.followers || {});
+      }, user.followers || initial);
       if(data.next_cursor) {
         loadFollowers(T, user, data.next_cursor, cb);
       } else {
@@ -49,10 +65,7 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
   function searchFollowers(T, user, q, cb) {
     if(!user.followers) {
-      loadFollowers(T, user, -1, function() {
-        console.log(user.followers);
-        f();
-      });
+      cb(null, []);
     } else {
       f();
     }
@@ -60,7 +73,6 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       var regex = new RegExp('.*' + q + '.*');
       var followers = user.followers;
       var filtered = Object.keys(followers).filter(function(key) {
-        console.log(key);
         return !!key.match(regex);
       }).map(function(key) {
         return followers[key];
@@ -205,11 +217,6 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
       if(!user.followers) {
         loadFollowers(T, user, -1, function() {
-          // res.send({
-          //   rooms: _rooms,
-          //   user: user,
-          //   followers: user.followers
-          // });
         });
       }
       res.send({
@@ -222,5 +229,35 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
   });
 
+  app.get('/api/search-user/:q', function(req, res) {
+    //TODO
+    if(!req.session.user) {
+      res.redirect('/');
+      return;
+    }
+    storage.getUser(req.session.user).then(function(user) {
+      var T = new Twit({
+          consumer_key: req.session.passport.user.twitterConsumerKey
+        , consumer_secret: req.session.passport.user.twitterConsumerSecret
+        , access_token: req.session.passport.user.twitterAccessToken
+        , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+      });
+      var q = req.params.q;
+      searchFollowers(T, user, q, function(e, data) {
+        data = data.map(function(twitterUser) {
+          return {
+            name: twitterUser.screen_name,
+            displayName: twitterUser.name,
+            image: twitterUser.profile_image_url
+          };
+        });
+        if(data.length > 10) {
+          data.length = 10;
+        }
+        res.send(data);
+      });
+    });
+
+  });
 
 };
