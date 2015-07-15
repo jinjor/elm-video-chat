@@ -38,6 +38,12 @@ state = Signal.foldp (\action (model, _) -> update action model)
                 (initialContext, Task.succeed NoOp) actions.signal
 
 
+port runState : Signal (Task () ())
+port runState = Signal.map (\(_, task) -> task `andThen` (\action -> Signal.send actions.address action)) state
+
+
+
+
 port fetchRoom : Task Http.Error ()
 port fetchRoom = getRooms
       `andThen` (\initData -> (Signal.send actions.address (Init initData)))
@@ -46,8 +52,8 @@ port fetchRoom = getRooms
 -- TODO
 fetchOptions : String -> Task () (List User)
 fetchOptions s = Task.succeed [{
-  name = s
-  , displayName = s
+  name = "456"
+  , displayName = "123"
   , image = ""
   }, {
   name = s ++ s
@@ -65,24 +71,28 @@ type Action
   | UpdateInviteName String
   | TypeaheadAction (Typeahead.Action User)
 
+noTask : Task () Action
+noTask = Task.succeed NoOp
+
 update : Action -> Model -> (Model, Task () Action)
 update action model =
     case action of
-      Init initData -> ({ model |
+      NoOp -> (model, noTask)
+      Init initData -> (,) { model |
         me <- initData.user,
         rooms <- initData.rooms
-      }, Task.succeed NoOp)
-      UpdateRoomName roomName -> ({ model |
+      } noTask
+      UpdateRoomName roomName -> (,) { model |
         roomName <- roomName
-      }, Task.succeed NoOp)
-      UpdateInviteName inviteName -> ({ model |
+      } noTask
+      UpdateInviteName inviteName -> (,) { model |
         inviteName <- inviteName
-      }, Task.succeed NoOp)
+      } noTask
       TypeaheadAction action ->
         let (newModel, task) = Typeahead.update action model.typeahead
-        in ({ model |
+        in (,) { model |
               typeahead <- newModel
-            }, Task.map TypeaheadAction task)
+            } (Task.map TypeaheadAction task)
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
@@ -96,24 +106,21 @@ view address model = div [] [
     , createRoomView address model
     , hr [] []
     , inviteView address model
-    , Typeahead.view (Signal.forwardTo address TypeaheadAction) model.typeahead
+    , typeaheadView address model
     ]
   ]
 
-createRoomView : Address Action -> Model -> Html
-createRoomView address model =
+
+typeaheadView : Address Action -> Model -> Html
+typeaheadView address model =
   let input_ = div [class "form-group"] [
-        label [] [text "New Room"]
-        , input [ name ""
-          , class "form-control"
-          , value model.roomName
-          , on "input" targetValue (Signal.message address << UpdateRoomName)
-        ] []
+        label [] [text "Invite"]
+        , text "@"
+        , Typeahead.view (Signal.forwardTo address TypeaheadAction) model.typeahead
       ]
       submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
-      form_ = Html.form [class "form-inline", action ("/room/" ++ encodeURI(model.roomName)), method "GET"] [input_, submit_]
+      form_ = div [action ("/invite"), method "POST"] [input_, submit_]
   in div [] [form_]
-
 
 inviteView : Address Action -> Model -> Html
 inviteView address model =
@@ -132,6 +139,22 @@ inviteView address model =
   in div [] [form_]
 
 
+
+createRoomView : Address Action -> Model -> Html
+createRoomView address model =
+  let input_ = div [class "form-group"] [
+        label [] [text "New Room"]
+        , input [ name ""
+          , class "form-control"
+          , value model.roomName
+          , on "input" targetValue (Signal.message address << UpdateRoomName)
+        ] []
+      ]
+      submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      form_ = Html.form [class "form-inline", action ("/room/" ++ encodeURI(model.roomName)), method "GET"] [input_, submit_]
+  in div [] [form_]
+
+roomViews : Model -> List Html
 roomViews model = List.map roomView model.rooms
 
 userOf : Dict PeerId User -> PeerId -> User

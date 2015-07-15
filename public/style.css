@@ -6,6 +6,12 @@ video {
 html, body {
 	height: 100%;
 }
+
+.typeahead .typeahead-selected {
+	background-color: #55acee
+}
+
+
 .header-offline {
 	color: #e66 !important;
 }
