@@ -23,7 +23,12 @@ type alias Room =
   , peers : List PeerId
   , users : List (PeerId, User)
   }
-type alias User = { name:String, displayName:String, image:String }
+type alias User =
+    { name : String
+    , displayName : String
+    , image : String
+    , authority : String
+    }
 type alias PeerId = String
 
 -- Data access
@@ -65,10 +70,11 @@ initialRoomsDataDecoder =
 
 userDecoder : Json.Decoder User
 userDecoder =
-  Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
+  Json.object4 (\name displayName image authority -> { name=name, displayName=displayName, image=image, authority=authority })
     ("name" := Json.string)
     ("displayName" := Json.string)
     ("image" := Json.string)
+    ("authority" := Json.string)
 
 roomDecoder : Json.Decoder Room
 roomDecoder =

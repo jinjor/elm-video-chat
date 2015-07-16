@@ -187,7 +187,7 @@ context = Signal.foldp update initialContext actionSignal
 userOf : Context -> PeerId -> User
 userOf c peerId = case Dict.get peerId c.rtc.users of
   Just user -> user
-  Nothing -> { name="", displayName="", image="" }
+  Nothing -> { name="", displayName="", image="", authority="" }
 
 -- Action --
 

@@ -246,7 +246,8 @@ module.exports = function(app, staticRouter, storage, session, ws) {
           return {
             name: twitterUser.screen_name,
             displayName: twitterUser.name,
-            image: twitterUser.profile_image_url
+            image: twitterUser.profile_image_url,
+            authority: ""
           };
         });
         if(data.length > 10) {

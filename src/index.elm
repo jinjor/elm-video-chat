@@ -29,7 +29,7 @@ initialContext =
   , inviteName = ""
   , typeahead = Typeahead.init "" (\user -> user.name) userOptionToHtml fetchOptions
   , rooms = []
-  , me = { name="", displayName="", image="" }
+  , me = { name="", displayName="", image="", authority = "" }
   }
 
 -- context : Signal Context
@@ -93,15 +93,19 @@ actions = Signal.mailbox NoOp
 --- View
 view : Address Action -> Model -> Html
 view address model =
-  div []
-    [ Header.header { user = model.me, connected = True }
-    , div [ class "container" ]
-      [ ul [class "list-unstyled clearfix col-md-12"] (roomViews model)
-      , createRoomView address model
-      , hr [] []
+  let
+    inviteView =
+      [ hr [] []
       , typeaheadView address model
       ]
-    ]
+  in
+    div []
+      [ Header.header { user = model.me, connected = True }
+      , div [ class "container" ]
+        ([ ul [class "list-unstyled clearfix col-md-12"] (roomViews model)
+        , createRoomView address model
+        ] ++ (if model.me.authority == "twitter" then inviteView else []))
+      ]
 
 
 typeaheadView : Address Action -> Model -> Html
@@ -149,7 +153,7 @@ roomViews model = List.map roomView model.rooms
 userOf : Dict PeerId User -> PeerId -> User
 userOf d peerId = case Dict.get peerId d of
   Just user -> user
-  Nothing -> { name = "", displayName = "", image = "" }
+  Nothing -> { name = "", displayName = "", image = "", authority = "" }
 
 roomView : Room -> Html
 roomView room =

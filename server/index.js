@@ -105,7 +105,8 @@ var loginCheck = function(req, res, next) {
         twitterId: _user.id,
         name: _user.username,
         displayName: _user.displayName,
-        image: _user._json.profile_image_url
+        image: _user._json.profile_image_url,
+        authority: "twitter"
       };
       storage.addUser(uid, user);
       req.session.user = uid;
@@ -121,7 +122,8 @@ var loginCheck = function(req, res, next) {
         id: req.session.user,
         name:req.session.user,
         displayName:req.session.user,
-        image: "/default_profile.png"
+        image: "/default_profile.png",
+        authority: "guest"
       });
       if (req.session.redirectURL) {
         var url = req.session.redirectURL;
