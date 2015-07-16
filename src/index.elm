@@ -16,7 +16,6 @@ import Lib.Typeahead as Typeahead
 
 type alias Model =
   { roomName : String
-  , inviteName : String
   , typeahead : Typeahead.Model User
   , rooms: List Room
   , me: User
@@ -26,7 +25,6 @@ type alias Model =
 initialContext : Model
 initialContext =
   { roomName = ""
-  , inviteName = ""
   , typeahead = Typeahead.init "" (\user -> user.name) userOptionToHtml fetchOptions
   , rooms = []
   , me = { name="", displayName="", image="", authority = "" }
@@ -63,7 +61,6 @@ type Action
   = NoOp
   | Init InitialRoomsData
   | UpdateRoomName String
-  | UpdateInviteName String
   | TypeaheadAction (Typeahead.Action User)
 
 
@@ -77,9 +74,6 @@ update action model =
       } Nothing
       UpdateRoomName roomName -> (,) { model |
         roomName <- roomName
-      } Nothing
-      UpdateInviteName inviteName -> (,) { model |
-        inviteName <- inviteName
       } Nothing
       TypeaheadAction action ->
         let (newModel, maybeTask) = Typeahead.update action model.typeahead
@@ -122,7 +116,10 @@ typeaheadView address model =
     submit_ = Html.form
       [ action ("/invite")
       , method "POST"
-      ] [input [ type' "submit", class "btn btn-primary", value "Create" ] []]
+      ]
+      [ input [ type' "hidden", name "invited", value model.typeahead.field ] []
+      , input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      ]
     form_ = div [] [input_, submit_]
 
   in div [] [form_]

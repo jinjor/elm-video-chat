@@ -5,6 +5,7 @@ var Twit = require('twit');
 module.exports = function(app, staticRouter, storage, session, ws) {
 
   var invite = session.isDevMode ? function invite(T, user, to, roomId, cb) {
+    console.log(to);
     cb();
   } : function invite(T, user, to, roomId, cb) {
     var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
