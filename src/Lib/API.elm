@@ -23,12 +23,13 @@ type alias PeerId = String
 -- Data access
 nocacheGet : Json.Decoder value -> String -> Task Http.Error value
 nocacheGet decoder url =
-  let request = {
-      verb = "GET"
+  let
+    request =
+      { verb = "GET"
       , headers = [("Cache-Control", "no-cache"), ("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT")]
       , url = url
       , body = Http.empty
-    }
+      }
   in Http.fromJson decoder (Http.send Http.defaultSettings request)
 
 getInitialData : String -> Task Http.Error InitialData
@@ -56,10 +57,11 @@ initialRoomsDataDecoder =
 
 
 userDecoder : Json.Decoder User
-userDecoder = Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
-        ("name" := Json.string)
-        ("displayName" := Json.string)
-        ("image" := Json.string)
+userDecoder =
+    Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
+      ("name" := Json.string)
+      ("displayName" := Json.string)
+      ("image" := Json.string)
 
 roomDecoder : Json.Decoder Room
 roomDecoder =

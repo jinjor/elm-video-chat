@@ -41,8 +41,8 @@ type Action
   | Leave PeerId
   | Undefined
 
-type alias Model = {
-      peers: Set PeerId
+type alias Model =
+    { peers: Set PeerId
     , users: Dict PeerId User
     , me: User
     , connections: Set Connection
@@ -51,14 +51,14 @@ type alias Model = {
     , localVideo: Bool
     , localAudio: Bool
     , localScreen: Bool
-  }
+    }
 
 type Error = Error String
 
 
 init : Model
-init = {
-      peers = Set.empty
+init =
+    { peers = Set.empty
     , users = Dict.empty
     , me = {name="", displayName="", image=""}
     , connections = Set.empty
@@ -67,7 +67,7 @@ init = {
     , localVideo = False
     , localAudio = False
     , localScreen = False
-  }
+    }
 
 
 update : Action -> Model -> Model
@@ -141,8 +141,8 @@ encoder action =
     ]
 
 actions : Signal Action
-actions = Signal.mergeMany [
-    LocalVideoUrl <~ onLocalVideoURL
+actions = Signal.mergeMany
+  [ LocalVideoUrl <~ onLocalVideoURL
   , RemoteVideoUrl <~ onRemoteVideoURL
   , AddConnection <~ onAddConnection
   , RemoveConnection <~ onRemoveConnection

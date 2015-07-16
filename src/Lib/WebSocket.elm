@@ -4,13 +4,13 @@ import Task exposing (..)
 import Signal exposing (..)
 import Native.WebSocket
 
-type alias Model = {
-    connected: Bool
+type alias Model =
+  { connected: Bool
   }
 
 init : Model
-init = {
-    connected = False
+init =
+  { connected = False
   }
 
 type Action

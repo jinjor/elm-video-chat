@@ -35,25 +35,24 @@ type Action
   | MyName String
   | ScrollDown
 
-type alias Model = {
-  opened : Bool,
-  messages : List IncomingChatMessage,
-  field : String,
-  noReadCount : Int,
-  myName : String
-}
+type alias Model =
+  { opened : Bool
+  , messages : List IncomingChatMessage
+  , field : String
+  , noReadCount : Int
+  , myName : String
+  }
 
 type Error = Error String
 
 init : Model
-init = {
-    opened = False,
-    messages = [],
-    field = "",
-    noReadCount = 0,
-    myName = ""
+init =
+  { opened = False
+  , messages = []
+  , field = ""
+  , noReadCount = 0
+  , myName = ""
   }
-
 
 update : Action -> Model -> Model
 update action model = case log "ChatView.action" action of
@@ -122,40 +121,40 @@ chatTimeline model =
   ] (List.map (\mes -> messageView model.myName mes) (List.reverse model.messages))
 
 chatInput : Address Action -> String -> Html
-chatInput address field = input [
-    id "chat-input",
-    class "form-control",
-    Html.Attributes.value field,
-    on "input" targetValue (Signal.message address << UpdateField),
-    onEnter (forwardTo address (\_ -> if (field == "") then NoOp else (Send field)))
-  ] []
+chatInput address field =
+  input
+    [ id "chat-input"
+    , class "form-control"
+    , Html.Attributes.value field
+    , on "input" targetValue (Signal.message address << UpdateField)
+    , onEnter (forwardTo address (\_ -> if (field == "") then NoOp else (Send field)))
+    ] []
 
 openedView : Address Action -> Model -> List Html
 openedView address model =
-  [
-    div [class "panel-heading row", onClick address Close] [
-      span [class "fa fa-comments"] [],
-      text <| "Chat"
-    ],
-    div [id "message-area", class "panel-body"] [
-      chatTimeline model
-    ],
-    div [class "row"] [
-      chatInput address model.field
-    ]
+  [ div [class "panel-heading row", onClick address Close]
+      [ span [class "fa fa-comments"] []
+      , text <| "Chat"
+      ]
+  , div [id "message-area", class "panel-body"]
+      [ chatTimeline model
+      ]
+  , div [class "row"]
+      [ chatInput address model.field
+      ]
   ]
 
 closedView : Address Action -> Int -> List Html
 closedView address noReadCount =
   let noreadClass = if noReadCount > 0 then " noread" else ""
-  in [
-    div [
-      class <| "panel-heading row" ++ noreadClass,
-      onClick address Open
-    ] [
-      span [class "fa fa-comments"] [],
-      text <| "Chat(" ++ (toString noReadCount) ++ ")"
-    ]
+  in
+  [ div
+      [ class <| "panel-heading row" ++ noreadClass
+      , onClick address Open
+      ]
+      [ span [class "fa fa-comments"] []
+      , text <| "Chat(" ++ (toString noReadCount) ++ ")"
+      ]
   ]
 
 view : Signal.Address Action -> Model -> Html
@@ -163,11 +162,11 @@ view address model =
   let inner = if | model.opened -> openedView address model
                  | otherwise -> closedView address model.noReadCount
       openedClass = if model.opened then " opened" else ""
-  in div [class "chat-view-container container"] [
-    div [
-      class <| "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6" ++ openedClass
-    ] inner
-  ]
+  in div [class "chat-view-container container"]
+    [ div
+      [ class <| "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6" ++ openedClass
+      ] inner
+    ]
 
 
 ---
@@ -182,14 +181,6 @@ dateToString time =
 
 fillZero2 : String -> String
 fillZero2 s = if String.length s == 2 then s else "0" ++ s
-
-
-
-
-
-
-
-
 
 
 
