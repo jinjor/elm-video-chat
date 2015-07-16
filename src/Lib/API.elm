@@ -16,7 +16,13 @@ import Debug exposing (log)
 -- Models
 type alias InitialData = { room: Room, user: User, iceServers: List Json.Encode.Value }
 type alias InitialRoomsData = { rooms: List Room, user: User }
-type alias Room = { id:String, private: Bool, members: List User, peers: List PeerId, users: List (PeerId, User)}
+type alias Room =
+  { id : String
+  , private : Bool
+  , members : List User
+  , peers : List PeerId
+  , users : List (PeerId, User)
+  }
 type alias User = { name:String, displayName:String, image:String }
 type alias PeerId = String
 
@@ -43,7 +49,8 @@ searchUser q = nocacheGet (Json.list userDecoder) ("/api/search-user/" ++ q)
 
 
 initialDataDecoder : Json.Decoder InitialData
-initialDataDecoder = Json.object3 (\user room iceServers -> { user=user, room=room, iceServers=iceServers })
+initialDataDecoder =
+  Json.object3 (\user room iceServers -> { user=user, room=room, iceServers=iceServers })
       ("user" := userDecoder)
       ("room" := roomDecoder)
       ("iceServers" := Json.list Json.value)
@@ -58,15 +65,19 @@ initialRoomsDataDecoder =
 
 userDecoder : Json.Decoder User
 userDecoder =
-    Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
-      ("name" := Json.string)
-      ("displayName" := Json.string)
-      ("image" := Json.string)
+  Json.object3 (\name displayName image -> { name=name, displayName=displayName, image=image })
+    ("name" := Json.string)
+    ("displayName" := Json.string)
+    ("image" := Json.string)
 
 roomDecoder : Json.Decoder Room
 roomDecoder =
-  let peer = Json.string
-  in Json.object5 (\id private members peers users -> { id=id, private=private, members=members, peers=peers, users=users })
+  let
+    peer = Json.string
+    toRecord id private members peers users =
+      { id = id, private = private, members = members, peers = peers, users = users }
+  in
+    Json.object5 toRecord
       ("id" := Json.string)
       ("private" := Json.bool)
       ("members" := Json.list userDecoder)

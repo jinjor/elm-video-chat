@@ -21,6 +21,7 @@ var needsHttps = !process.env.PORT;
 var _twitterConsumerKey = process.env.TWITTER_CONSUMER_KEY;
 var _twitterConsumerSecret = process.env.TWITTER_CONSUMER_SECRET;
 var isHeroku = !!process.env.PORT;
+var isDevMode = !isHeroku;
 
 passport.use(new TwitterStrategy({
     consumerKey: _twitterConsumerKey,
@@ -80,9 +81,8 @@ var loginCheck = function(req, res, next) {
   // console.log("req.session.user:" + req.session.user)
 
   if (req.method === 'POST' && req.url === '/api/login') {
-    var email = req.body.email;
-    var password = req.body.password;
-    req.session.user = email;
+    var name = req.body.name;
+    req.session.user = name;
     res.redirect(req.header('referrer'));
   } else if (req.method === 'GET' && req.url === '/logout') {
 
@@ -148,6 +148,8 @@ app.use(staticRouter);
 // setup REST
 
 globalSession.rootURL = isHeroku ? 'https://vity2.herokuapp.com' : 'https://localhost:' + port;//TODO
+globalSession.isDevMode = isDevMode;
+
 rest(app, staticRouter, storage, globalSession);
 
 var server = https.createServer({

@@ -205,17 +205,17 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       _rooms = _rooms.filter(function(room) {
         return !room.private;
       });
-
-      var T = new Twit({
-          consumer_key: req.session.passport.user.twitterConsumerKey
-        , consumer_secret: req.session.passport.user.twitterConsumerSecret
-        , access_token: req.session.passport.user.twitterAccessToken
-        , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
-      });
-
-      if(!user.followers) {
-        loadFollowers(T, user, -1, function() {
-        });
+      if(req.session.passport.user) {// twitter acount
+        if(!user.followers) {
+          var T = new Twit({
+              consumer_key: req.session.passport.user.twitterConsumerKey
+            , consumer_secret: req.session.passport.user.twitterConsumerSecret
+            , access_token: req.session.passport.user.twitterAccessToken
+            , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+          });
+          loadFollowers(T, user, -1, function() {
+          });
+        }
       }
       res.send({
         rooms: _rooms,

@@ -35,22 +35,20 @@ initialContext =
 -- context : Signal Context
 -- context = Signal.foldp update initialContext actions.signal
 
-state : Signal (Model, Maybe (Task () Action))
+state : Signal (Model, Maybe (Task () ()))
 state = Signal.foldp (\action (model, _) -> update action model)
-                (initialContext, Nothing) actions.signal
+                (initialContext, Just fetchRoom) actions.signal
 
 
 port runState : Signal (Task () ())
 port runState = Signal.map (\(_, maybeTask) -> case maybeTask of
-      Just task -> task `andThen` Signal.send actions.address
+      Just task -> task
       Nothing -> Task.succeed ()
       ) state
 
 
-
-
-port fetchRoom : Task Http.Error ()
-port fetchRoom = getRooms
+fetchRoom : Task () ()
+fetchRoom = getRooms
       `andThen` (\initData -> (Signal.send actions.address (Init initData)))
       `onError` (\err -> log "err" (succeed ()))
 
@@ -69,12 +67,12 @@ type Action
   | TypeaheadAction (Typeahead.Action User)
 
 
-update : Action -> Model -> (Model, Maybe (Task () Action))
+update : Action -> Model -> (Model, Maybe (Task () ()))
 update action model =
     case action of
       NoOp -> (model, Nothing)
       Init initData -> (,) { model |
-        me <- initData.user,
+        me <- log "initData" initData.user,
         rooms <- initData.rooms
       } Nothing
       UpdateRoomName roomName -> (,) { model |
@@ -87,7 +85,7 @@ update action model =
         let (newModel, maybeTask) = Typeahead.update action model.typeahead
         in (,) { model |
               typeahead <- newModel
-            } (Maybe.map (Task.map TypeaheadAction) maybeTask)
+            } (Maybe.map (\task -> task  `andThen` (\action -> Signal.send actions.address (TypeaheadAction action))) maybeTask)
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
