@@ -4,7 +4,7 @@ var Twit = require('twit');
 
 module.exports = function(app, staticRouter, storage, session, ws) {
 
-  var invide = session.isDevMode ? function invite(T, user, to, roomId, cb) {
+  var invite = session.isDevMode ? function invite(T, user, to, roomId, cb) {
     cb();
   } : function invite(T, user, to, roomId, cb) {
     var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
@@ -122,28 +122,39 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       res.redirect('/');
       return;
     }
-    var T = new Twit({
-        consumer_key: req.session.passport.user.twitterConsumerKey
-      , consumer_secret: req.session.passport.user.twitterConsumerSecret
-      , access_token: req.session.passport.user.twitterAccessToken
-      , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
-    });
-    var roomId = uuid.v1();
-    session.getRoom(roomId) || session.createPrivateRoom(roomId);
-    var to = req.body.invited;
-
-    invite(T, req.session.user, to, roomId, function(e) {
-      if(e) {
-        console.log(e);
-        var errorMessage = 'error!';
-        if(e.code === 150) {
-          errorMessage = 'The user @' + to + ' does not exist or is not following you.';
-        }
-        res.send(errorMessage);
+    storage.getUser(req.session.user).then(function(user) {
+      if(user.authority !== 'twitter') {
+        res.sendStatus(401);
         return;
       }
-      res.redirect('/room/' + roomId);
+      var T = new Twit({
+          consumer_key: req.session.passport.user.twitterConsumerKey
+        , consumer_secret: req.session.passport.user.twitterConsumerSecret
+        , access_token: req.session.passport.user.twitterAccessToken
+        , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+      });
+      var roomId = uuid.v1();
+      session.getRoom(roomId) || session.createPrivateRoom(roomId);
+      var to = req.body.invited;
+
+      invite(T, req.session.user, to, roomId, function(e) {
+        if(e) {
+          console.log(e);
+          var errorMessage = 'error!';
+          if(e.code === 150) {
+            errorMessage = 'The user @' + to + ' does not exist or is not following you.';
+          }
+          res.send(errorMessage);
+          return;
+        }
+        res.redirect('/room/' + roomId);
+      });
+
+    }).catch(function(e) {
+      console.log(e);
+      res.sendStatus(500);
     });
+
   });
   app.get('/api/room/:id', function(req, res) {
     var roomId = req.params.id;
@@ -173,9 +184,12 @@ module.exports = function(app, staticRouter, storage, session, ws) {
           room: _room,
           iceServers: iceServers
         });
+      }).catch(function(e) {
+        console.log(e);
+        res.sendStatus(500);
       });
     } else {
-      res.status(404).end();
+      res.sendStatus(404);
     }
   });
   app.get('/api/rooms', function(req, res) {
@@ -234,6 +248,11 @@ module.exports = function(app, staticRouter, storage, session, ws) {
       return;
     }
     storage.getUser(req.session.user).then(function(user) {
+      if(user.authority !== 'twitter') {
+        res.sendStatus(401);
+        return;
+      }
+
       var T = new Twit({
           consumer_key: req.session.passport.user.twitterConsumerKey
         , consumer_secret: req.session.passport.user.twitterConsumerSecret
