@@ -39,18 +39,20 @@ type Action
   | EndStream String Json.Encode.Value
   | Join PeerId User
   | Leave PeerId
+  | Volumes (List (PeerId, Int))
   | Undefined
 
 type alias Model =
-    { peers: Set PeerId
-    , users: Dict PeerId User
-    , me: User
-    , connections: Set Connection
-    , videoUrls: Dict Connection String
-    , localVideoUrls: Dict String String
-    , localVideo: Bool
-    , localAudio: Bool
-    , localScreen: Bool
+    { peers : Set PeerId
+    , users : Dict PeerId User
+    , me : User
+    , connections : Set Connection
+    , videoUrls : Dict Connection String
+    , localVideoUrls : Dict String String
+    , localVideo : Bool
+    , localAudio : Bool
+    , localScreen : Bool
+    , volumes : List (PeerId, Int)
     }
 
 type Error = Error String
@@ -67,6 +69,7 @@ init =
     , localVideo = False
     , localAudio = False
     , localScreen = False
+    , volumes = []
     }
 
 
@@ -116,6 +119,10 @@ update action model = case action of
       peers <- Set.remove peerId model.peers,
       users <- Dict.remove peerId model.users
     }
+  Volumes volumes ->
+    { model |
+      volumes <- volumes
+    }
   _ -> model
 
 logError : Error -> String
@@ -140,13 +147,14 @@ encoder action =
     , ("data", data_)
     ]
 
-actions : Signal Action
-actions = Signal.mergeMany
+actions : Signal x -> Signal Action
+actions volumeSampling = Signal.mergeMany
   [ LocalVideoUrl <~ onLocalVideoURL
   , RemoteVideoUrl <~ onRemoteVideoURL
   , AddConnection <~ onAddConnection
   , RemoveConnection <~ onRemoveConnection
   , Request <~ requests
+  , Volumes <~ toVolumes volumeSampling
   ]
 
 decode : String -> Maybe Action
@@ -244,10 +252,17 @@ beforeJoin = Native.WebRTC.beforeJoin
 
 beforeLeave : String -> Task String ()
 beforeLeave = Native.WebRTC.beforeLeave
+
+currentVolumes : x -> (List (PeerId, Int))
+currentVolumes = Native.WebRTC.currentVolumes
+
+toVolumes : Signal x -> Signal (List (PeerId, Int))
+toVolumes signal = Signal.map currentVolumes signal
+
 --
 
 doTask : Action -> Task Error ()
-doTask action = case log "WebRTC.doTask" action of
+doTask action = case {-log "WebRTC.doTask"-} action of
   Initialize selfId iceServers -> initialize selfId iceServers `onError` (\e -> fail <| Error e)
   OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
   AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)

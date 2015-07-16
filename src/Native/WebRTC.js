@@ -135,6 +135,14 @@
       });
     };
 
+    var currentVolumes = function() {
+      var array = cm ? cm.getCurrentVolumes() : [];
+      var list = arrayToList(array, function(peerId_volume) {
+        return Utils.Tuple2(peerId_volume[0], peerId_volume[1]);
+      });
+      return list;
+    };
+
     return localRuntime.Native.WebRTC.values = {
       initialize: F2(_initialize),
       answerSDP: F2(_answerSDP),
@@ -150,6 +158,7 @@
       onRemoteVideoURL: _onRemoteVideoURL,
       onAddConnection: _onAddConnection,
       onRemoveConnection: _onRemoveConnection,
+      currentVolumes: currentVolumes
     };
   };
   function getRoom() {
@@ -184,8 +193,47 @@
 
     //----
     var streams = {};
+    var audioAnalysers = {};
     var addStream = function(peerId, mediaType, stream) {
+
+      if(window.AudioContext && mediaType === 'mic') {
+        setTimeout(function(){
+          var context = new AudioContext();
+          var source = context.createMediaStreamSource(stream);
+          var gainNode = context.createGain();
+          gainNode.gain.value = 100.0;
+
+          var analyser = context.createAnalyser();
+          // analyser.fftSize = 1024;
+          source.connect(gainNode);
+          gainNode.connect(analyser);
+          // alert(analyser.minDecibels);
+          // alert(analyser.maxDecibels);
+          // analyser.minDecibel = -40;
+          // analyser.maxDecibels = -10;
+          // analyser.minDecibels = parseFloat(document.getElementById("min").value);
+          // analyser.maxDecibels = parseFloat(document.getElementById("max").value);
+          // analyser.smoothingTimeConstant = parseFloat(document.getElementById("smoothing").value);
+          audioAnalysers[peerId] = analyser;
+        }, 100)
+
+      }
       streams[peerId + mediaType] = stream;
+    };
+    var getCurrentVolumes = function() {
+      var all = Object.keys(audioAnalysers).map(function(peerId) {
+        var analyser = audioAnalysers[peerId];
+        var data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteTimeDomainData(data);
+        var sum = 0;
+        for(var i = 0; i < data.length; i++) {
+          var value = data[i] - 128;
+          sum += value > 0 ? value : -value;
+        }
+        var value = Math.round(sum / data.length);
+        return [peerId, value];
+      });
+      return all;
     };
     var getStream = function(peerId, mediaType) {
       return streams[peerId + mediaType];
@@ -200,7 +248,8 @@
       removeAllConnections: removeAllConnections,
       getStream: getStream,
       addStream: addStream,
-      removeStream: removeStream
+      removeStream: removeStream,
+      getCurrentVolumes: getCurrentVolumes
     };
   }
 
@@ -427,7 +476,17 @@
   function onerror(e) {
     console.error(e);
   }
-
+  function arrayToList(array, f) {
+    var list = {ctor: "[]"};
+    for(var i = array.length - 1; i >= 0; i--) {
+      list = {
+        ctor: "::",
+        _0: f(array[i]),
+        _1: list
+      };
+    }
+    return list;
+  }
   function listToArray(list) {
 		var array = [];
 		while (list.ctor !== '[]') {

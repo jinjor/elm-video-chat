@@ -16,6 +16,7 @@ import Maybe
 import Set exposing (Set)
 import Dict exposing (Dict)
 import Signal exposing (..)
+import Time exposing (..)
 
 import Lib.API as API exposing (PeerId, User)
 import Lib.Header as Header
@@ -97,7 +98,7 @@ errorLog e = case e of
 
 port runTasks : Signal (Task Error ())
 port runTasks =
-  let f (time, action) c = case log "runTasks" action of
+  let f (time, action) c = case {-log "runTasks"-} action of
       InitRoom initial -> (WS.send <| joinToJson c.selfPeerId c.roomName) `onError` (\e -> fail <| WSError e)
       WSAction event ->
         case event of
@@ -222,7 +223,7 @@ actionSignal : Signal Action
 actionSignal = Signal.mergeMany
   [ actions.signal
   , WSAction <~ WS.actions
-  , RTCAction <~ WebRTC.actions
+  , RTCAction <~ WebRTC.actions (fps 25)
   ]
 
 
@@ -230,7 +231,7 @@ actionSignal = Signal.mergeMany
 
 update : Action -> Context -> Context
 update action context =
-    case log "action" action of
+    case {-log "action"-} action of
       WSAction event ->
         let newContext =
           { context |
@@ -379,15 +380,24 @@ peerViews address c peers = ul
   ] (List.map (\peer -> peerView address c peer) peers)
 
 statusView : Context -> Html
-statusView c = div [class "col-sm-3 col-md-3"]
-  [ div [class "status-panel row panel panel-default"]
-    [ div [class "panel-body"]
-        [ roomTitle c
-        , mediaButtons c.address c
-        , peerViews c.address c (Set.toList c.rtc.peers)
+statusView c =
+  let
+    myVolume =
+      case List.head (List.filter (\(peerId, _) -> peerId == c.selfPeerId) c.rtc.volumes) of
+        Just (_, volume) -> volume
+        Nothing -> 0
+    myVolumeLog = round <| (logBase 1.14 (toFloat myVolume))
+  in
+    div [class "col-sm-3 col-md-3"]
+      [ div [class "status-panel row panel panel-default"]
+        [ div [class "panel-body"]
+            [ roomTitle c
+            , div [] [text <| String.repeat (max (myVolumeLog - 5) 1) "|" ]
+            , mediaButtons c.address c
+            , peerViews c.address c (Set.toList c.rtc.peers)
+            ]
         ]
-    ]
-  ]
+      ]
 
 mainView : Context -> Html
 mainView c = div [class "col-sm-9 col-md-9"] [div [class "row"] (mediaViews c)]
