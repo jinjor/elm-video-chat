@@ -18,8 +18,8 @@ var Twit = require('twit');
 
 var port = process.env.PORT || 3000;
 var needsHttps = !process.env.PORT;
-var _twitterConsumerKey = process.env.TWITTER_CUSTOMER_KEY;
-var _twitterConsumerSecret = process.env.TWITTER_CUSTOMER_SECRET;
+var _twitterConsumerKey = process.env.TWITTER_CONSUMER_KEY;
+var _twitterConsumerSecret = process.env.TWITTER_CONSUMER_SECRET;
 var isHeroku = !!process.env.PORT;
 
 passport.use(new TwitterStrategy({
