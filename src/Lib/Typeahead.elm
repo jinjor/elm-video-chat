@@ -21,27 +21,27 @@ type Action a
   | Blur
   | Blur2
 
-type alias Model a = {
-    field : String
+type alias Model a =
+  { field : String
   , toField : a -> String
   , toHtml : a -> Html
   , fetch : String -> Task () (List a) -- `onError` outside
   , options : List a
   , selected : Int
-  , focused : Bool
+  , optionVisible : Bool
   }
 
 type Error = Error String
 
 init : String -> (a -> String) -> (a -> Html) -> (String -> Task () (List a)) -> (Model a)
-init initialField toField toHtml fetch = {
-    field = initialField
+init initialField toField toHtml fetch =
+  { field = initialField
   , toField = toField
   , toHtml = toHtml
   , fetch = fetch
   , options = []
   , selected = -1
-  , focused = False
+  , optionVisible = False
   }
 
 -- Update
@@ -61,20 +61,21 @@ update action model =
         if (key == 13 && model.selected >= 0) then selectOption model model.selected else
           { model |
             selected <- updateSelected key (List.length model.options) model.selected
+          , optionVisible <- True
           }
       Select index -> selectOption model index
       Focus -> { model |
-        focused <- True
+        optionVisible <- True
       }
       Blur -> { model |
         selected <- -1
       }
-      Blur2 -> { model |
-        focused <- False
-      }
+      -- Blur2 -> { model |
+      --   optionVisible <- False
+      -- }
     task = case action of
       UpdateField field -> if field == "" then Nothing else Just <| Task.map Data (model.fetch field)
-      Blur -> Just <| Task.sleep 400 `andThen` (\_ -> Task.succeed Blur2)
+      -- Blur -> Just <| Task.sleep 1 `andThen` (\_ -> Task.succeed Blur2)
       _ -> Nothing
   in (newModel, task)
 
@@ -82,10 +83,13 @@ selectOption : Model a -> Int -> Model a
 selectOption model index =
   { model |
     selected <- -1
-    , options <- []
-    , field <- case nth index model.options of
-      Just obj -> model.toField obj
-      Nothing -> ""
+  , optionVisible <- False
+  , options <- case nth index model.options of
+    Just obj -> [obj]
+    Nothing -> []
+  , field <- case nth index model.options of
+    Just obj -> model.toField obj
+    Nothing -> ""
   }
 
 updateSelected : Int -> Int -> Int -> Int
@@ -103,31 +107,31 @@ nth index list = List.head (List.drop index list)
 view : Address (Action a) -> Model a -> Html
 view address model =
   let
-    visible = model.focused && List.length model.options > 0
+    visible = model.optionVisible && List.length model.options > 0
   in
-    div [class "typeahead dropdown"] [
-      input [
-        class "form-control"
-      , onKeyDown address KeyDown
-      , onFocus address Focus
-      , onBlur address Blur
-      , on "input" targetValue (Signal.message address << UpdateField)
-      , value <| displayField model
-      ] []
-    , ul [
-        class "dropdown-menu"
-      , style [("display", if visible then "block" else "none"), ("width", "100%")]
-      ] (List.indexedMap (\index obj -> optionsView address model index obj) model.options)
-    ]
+    div [class "typeahead dropdown"]
+      [ input
+        [ class "form-control"
+        , onKeyDown address KeyDown
+        , onFocus address Focus
+        , onBlur address Blur
+        , on "input" targetValue (Signal.message address << UpdateField)
+        , value <| displayField model
+        ] []
+      , ul
+          [ class "dropdown-menu"
+          , style [("display", if visible then "block" else "none"), ("width", "100%")]
+          ] (List.indexedMap (\index obj -> optionsView address model index obj) model.options)
+      ]
 
 optionsView : Address (Action a) -> Model a -> Int -> a -> Html
 optionsView address model index obj =
-  li [
-    class ("typeahead-option" ++ (if index == model.selected then " typeahead-selected" else ""))
-  , onClick address (Select index)
-  ] [
-    model.toHtml obj
-  ]
+  li
+    [ class ("typeahead-option" ++ (if index == model.selected then " typeahead-selected" else ""))
+    , onClick address (Select index)
+    ] [
+      model.toHtml obj
+    ]
 
 displayField : Model a -> String
 displayField model =

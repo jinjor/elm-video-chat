@@ -29,25 +29,27 @@ import Debug exposing (log)
 
 -- Models
 
-type alias Context = {
-    selfPeerId: PeerId
+type alias Context =
+    { selfPeerId: PeerId
     , roomName: String
     , address: Signal.Address Action
     , ws : WS.Model
     , rtc : WebRTC.Model
     , chat: ChatView.Model
-  }
+    }
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType)
 
 mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
-initialContext = { selfPeerId = ""
+initialContext =
+  { selfPeerId = ""
   , roomName = ""
   , address = actions.address
   , ws = WS.init
   , rtc = WebRTC.init
-  , chat = ChatView.init }
+  , chat = ChatView.init
+  }
 
 -- Data access
 
@@ -128,35 +130,38 @@ port runTasks =
 
 signalToJson : String -> String -> (String, String, Json.Encode.Value) -> String
 signalToJson selfId roomName (type_, to, data_) =
-  let value = Json.Encode.object [
-    ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string selfId),
-    ("to", Json.Encode.string to),
-    ("type", Json.Encode.string type_),
-    ("data", data_)
-  ]
+  let
+    value = Json.Encode.object
+      [ ("room", Json.Encode.string roomName)
+      , ("from", Json.Encode.string selfId)
+      , ("to", Json.Encode.string to)
+      , ("type", Json.Encode.string type_)
+      , ("data", data_)
+      ]
   in Json.Encode.encode 0 value
 
 messageToJson : String -> String -> String -> Time -> String
 messageToJson selfId roomName mes time =
-  let value = Json.Encode.object [
-    ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string selfId),
-    ("type", Json.Encode.string "message"),
-    ("data", Json.Encode.object [
-      ("message", Json.Encode.string mes),
-      ("time", Json.Encode.float time)
-    ])
-  ]
+  let
+    value = Json.Encode.object
+      [ ("room", Json.Encode.string roomName)
+      , ("from", Json.Encode.string selfId)
+      , ("type", Json.Encode.string "message")
+      , ("data", Json.Encode.object
+          [ ("message", Json.Encode.string mes)
+          , ("time", Json.Encode.float time)
+          ])
+      ]
   in Json.Encode.encode 0 value
 
 joinToJson : String -> String -> String
 joinToJson selfId roomName =
-  let value = Json.Encode.object [
-    ("room", Json.Encode.string roomName),
-    ("from", Json.Encode.string selfId),
-    ("type", Json.Encode.string "join")
-  ]
+  let
+    value = Json.Encode.object
+      [ ("room", Json.Encode.string roomName)
+      , ("from", Json.Encode.string selfId)
+      , ("type", Json.Encode.string "join")
+      ]
   in Json.Encode.encode 0 value
 
 
@@ -214,8 +219,8 @@ decode s = case WebRTC.decode s of
 
 
 actionSignal : Signal Action
-actionSignal = Signal.mergeMany [
-  actions.signal
+actionSignal = Signal.mergeMany
+  [ actions.signal
   , WSAction <~ WS.actions
   , RTCAction <~ WebRTC.actions
   ]
@@ -278,17 +283,19 @@ update action context =
 -- View --
 
 fullscreenButton : Address Action -> String -> Html
-fullscreenButton address videoURL = div [
-      class "btn pull-right",
-      onClick address (FullScreen videoURL)
+fullscreenButton address videoURL =
+  div
+    [ class "btn pull-right"
+    , onClick address (FullScreen videoURL)
     ] [
       div [class "glyphicon glyphicon-fullscreen"] []
     ]
 
 windowCloseButton : Context -> String -> Html
-windowCloseButton c mediaType = div [
-      class "btn pull-right",
-      onClick c.address (EndStreaming (mediaType, (Set.toList c.rtc.peers)))
+windowCloseButton c mediaType =
+  div
+    [ class "btn pull-right"
+    , onClick c.address (EndStreaming (mediaType, (Set.toList c.rtc.peers)))
     ] [
       div [class "glyphicon glyphicon-remove"] []
     ]
@@ -302,14 +309,14 @@ windowHeader title buttons =
 -- View
 view : Context -> Html
 view c =
-  div [] [
-    Header.header { user = c.rtc.me, connected = c.ws.connected },
-    div [class "container"] [
-      statusView c,
-      mainView c,
-      ChatView.view (forwardTo c.address ChatAction) c.chat
+  div []
+    [ Header.header { user = c.rtc.me, connected = c.ws.connected }
+    , div [class "container"]
+      [ statusView c
+      , mainView c
+      , ChatView.view (forwardTo c.address ChatAction) c.chat
+      ]
     ]
-  ]
 
 window : Html -> Html -> Bool -> Bool -> Html
 window header body local hidden =
@@ -317,8 +324,8 @@ window header body local hidden =
     face = if local then "panel-primary" else "panel-default"
     classes = [("hidden", hidden), ("col-sm-6", True), ("col-md-6", True)]
   in
-    div [classList classes] [
-      div [class ("panel " ++ face)] [header, body]
+    div [classList classes]
+    [ div [class ("panel " ++ face)] [header, body]
     ]
 
 roomTitle c = h2 [ class "room-name" ] [text c.roomName]
@@ -343,41 +350,42 @@ madiaButton c mediaType =
       face = if streaming then "btn-primary" else "btn-default"
       action = if streaming then EndStreaming (mediaType, peers) else StartStreaming (mediaType, peers)
       peers = Set.toList c.rtc.peers
-  in button [
-    Html.Attributes.type' "button",
-    class ("btn " ++ face),
-    onClick c.address action
-  ] [madiaIcon mediaType]
+  in button
+    [ Html.Attributes.type' "button"
+    , class ("btn " ++ face)
+    , onClick c.address action
+    ] [madiaIcon mediaType]
 
 mediaButtons : Address Action -> Context -> Html
-mediaButtons address c = div [
-    Html.Attributes.attribute "role" "group", class "btn-group"
+mediaButtons address c = div
+  [ Html.Attributes.attribute "role" "group"
+  , class "btn-group"
   ] (List.map (madiaButton c) mediaTypes)
 
 peerView : Address Action -> Context -> PeerId -> Html
 peerView address c peer =
   let user = userOf c peer
-  in li [] [
-    div [] [
-      -- i [class "fa fa-user"] [],
-      img [src user.image] []
+  in li []
+    [ div []
+      [ -- i [class "fa fa-user"] [],
+        img [src user.image] []
       , text user.displayName
+      ]
     ]
-  ]
 
 peerViews : Address Action -> Context -> List PeerId -> Html
-peerViews address c peers = ul [
-    class "user-list list-unstyled hidden-xs"
+peerViews address c peers = ul
+  [ class "user-list list-unstyled hidden-xs"
   ] (List.map (\peer -> peerView address c peer) peers)
 
 statusView : Context -> Html
-statusView c = div [class "col-sm-3 col-md-3"] [
-    div [class "status-panel row panel panel-default"] [
-      div [class "panel-body"] [
-        roomTitle c,
-        mediaButtons c.address c,
-        peerViews c.address c (Set.toList c.rtc.peers)
-      ]
+statusView c = div [class "col-sm-3 col-md-3"]
+  [ div [class "status-panel row panel panel-default"]
+    [ div [class "panel-body"]
+        [ roomTitle c
+        , mediaButtons c.address c
+        , peerViews c.address c (Set.toList c.rtc.peers)
+        ]
     ]
   ]
 
@@ -412,8 +420,8 @@ remoteMediaWindowView address c connection =
 mediaWindowView : Context -> String -> String -> String -> Bool -> Html
 mediaWindowView c mediaType title videoUrl local =
   let
-    attrs = [
-        src videoUrl
+    attrs =
+      [ src videoUrl
         , Html.Attributes.attribute "autoplay" ""
       ] ++ (if local then [Html.Attributes.attribute "muted" ""] else [])
     videoHtml =
