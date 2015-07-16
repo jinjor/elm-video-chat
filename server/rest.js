@@ -4,20 +4,18 @@ var Twit = require('twit');
 
 module.exports = function(app, staticRouter, storage, session, ws) {
 
-  // for safety
-  // function invite(T, user, to, roomId, cb) {
-  //   var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
-  //   T.post('direct_messages/new', {
-  //       user_id : user.twitterId,
-  //       screen_name: to,
-  //       text: 'Invitation to Vity2! ' + url
-  //     }, function(err, data, response) {
-  //     // console.log(data)
-  //     cb(err, data);
-  //   });
-  // }
-  function invite(T, user, to, roomId, cb) {
+  var invide = session.isDevMode ? function invite(T, user, to, roomId, cb) {
     cb();
+  } : function invite(T, user, to, roomId, cb) {
+    var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
+    T.post('direct_messages/new', {
+        user_id : user.twitterId,
+        screen_name: to,
+        text: 'Invitation to Vity2! ' + url
+      }, function(err, data, response) {
+      // console.log(data)
+      cb(err, data);
+    });
   }
 
   function loadFollowers(T, user, cursor, cb) {

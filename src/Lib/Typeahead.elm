@@ -6,6 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Signal exposing (..)
+import Mouse
 
 import Debug exposing (log)
 
@@ -70,12 +71,12 @@ update action model =
       Blur -> { model |
         selected <- -1
       }
-      -- Blur2 -> { model |
-      --   optionVisible <- False
-      -- }
+      Blur2 -> { model |
+        optionVisible <- False
+      }
     task = case action of
       UpdateField field -> if field == "" then Nothing else Just <| Task.map Data (model.fetch field)
-      -- Blur -> Just <| Task.sleep 1 `andThen` (\_ -> Task.succeed Blur2)
+      Blur -> Just <| Task.sleep 400 `andThen` (\_ -> Task.succeed Blur2) -- TODO a race condition
       _ -> Nothing
   in (newModel, task)
 
