@@ -344,6 +344,7 @@
       }
     };
     pc.onaddstream = function(e) {
+      var mediaType = e.getAudioTracks()[0] ? 'mic' : 'video';//TODO
       cm.addStream(_from, mediaType, e.stream);
       onRemoteVideoURL(_from, mediaType, URL.createObjectURL(e.stream));
     };
