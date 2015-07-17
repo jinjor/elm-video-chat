@@ -99,12 +99,16 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
 
 
+  // var iceServers =  [{
+  //   url: 'stun:stun.l.google.com:19302'
+  // }, {
+  //   url: 'turn:homeo@turn.bistri.com:80',
+  //   credential: 'homeo'
+  // }];
   var iceServers =  [{
-    url: 'stun:stun.l.google.com:19302'
-  }, {
-    url: 'turn:homeo@turn.bistri.com:80',
-    credential: 'homeo'
+    url: 'stun:46.137.243.49:3478'
   }];
+
   app.get('/room/:id', function(req, res, next) {
     //TODO
     if(!req.session.user) {
