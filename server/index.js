@@ -23,6 +23,16 @@ var _twitterConsumerSecret = process.env.TWITTER_CONSUMER_SECRET;
 var isHeroku = !!process.env.PORT;
 var isDevMode = !isHeroku;
 
+(function validate() {
+  if(!_twitterConsumerKey) {
+    throw new Error('TWITTER_CONSUMER_KEY is not defined');
+  }
+  if(!_twitterConsumerSecret) {
+    throw new Error('TWITTER_CONSUMER_SECRET is not defined');
+  }
+})();
+
+
 passport.use(new TwitterStrategy({
     consumerKey: _twitterConsumerKey,
     consumerSecret: _twitterConsumerSecret,
