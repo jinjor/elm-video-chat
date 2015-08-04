@@ -306,7 +306,7 @@
             to: peerId,
             data: e.candidate
           });
-        }, 2000);
+        }, 0);
       }
     };
 
