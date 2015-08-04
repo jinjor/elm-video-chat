@@ -16,8 +16,9 @@ import Native.WebRTC
 import Lib.API as API exposing (User)
 
 -- Models
+type alias Upstream = Int
 type alias MediaType = String
-type alias Connection = (PeerId, MediaType)
+type alias Connection = (PeerId, MediaType, Upstream)
 type alias PeerId = String
 
 type Action
@@ -232,7 +233,7 @@ answerSDP = Native.WebRTC.answerSDP
 acceptAnswer : String -> Json.Encode.Value -> Task String ()
 acceptAnswer = Native.WebRTC.acceptAnswer
 
-addCandidate : String -> Json.Encode.Value -> Task String ()
+addCandidate : String -> Json.Encode.Value -> Bool -> Task String ()
 addCandidate = Native.WebRTC.addCandidate
 
 closeRemoteStream : String -> Json.Encode.Value -> Task String ()
@@ -266,8 +267,8 @@ doTask action = case {-log "WebRTC.doTask"-} action of
   Initialize selfId iceServers -> initialize selfId iceServers `onError` (\e -> fail <| Error e)
   OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
   AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)
-  OfferCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
-  AnswerCandidate from data_ -> addCandidate from data_ `onError` (\e -> fail <| Error e)
+  OfferCandidate from data_ -> addCandidate from data_ False `onError` (\e -> fail <| Error e)
+  AnswerCandidate from data_ -> addCandidate from data_ True `onError` (\e -> fail <| Error e)
   EndStream from data_ -> closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
   StartStreaming (mediaType, peers) -> startStreaming mediaType peers `onError` (\e -> fail <| Error e)
   EndStreaming (mediaType, peers) -> endStreaming mediaType `onError` (\e -> fail <| Error e)

@@ -2,7 +2,7 @@
 
   function Tuple3(x,y,z) {
 		return {
-			ctor: "_Tuple3",
+			ctor: '_Tuple3',
 			_0: x,
 			_1: y,
       _2: z
@@ -19,11 +19,11 @@
     var Task = Elm.Native.Task.make(localRuntime);
     var Utils = Elm.Native.Utils.make(localRuntime);
     var NS = Elm.Native.Signal.make(localRuntime);
-    var requests = NS.input('WebRTC.requests', Tuple3("", "", ""));
-    var _onLocalVideoURL = NS.input('WebRTC.onLocalVideoURL', Utils.Tuple2("", ""));
-    var _onRemoteVideoURL = NS.input('WebRTC.onRemoteVideoURL', Utils.Tuple2(Utils.Tuple2("", ""), ""));
-    var _onAddConnection = NS.input('WebRTC.onAddConnection',  Utils.Tuple2("", ""));
-    var _onRemoveConnection = NS.input('WebRTC.onRemoveConnection',  Utils.Tuple2("", ""));
+    var requests = NS.input('WebRTC.requests', Tuple3('', '', ''));
+    var _onLocalVideoURL = NS.input('WebRTC.onLocalVideoURL', Utils.Tuple2('', ''));
+    var _onRemoteVideoURL = NS.input('WebRTC.onRemoteVideoURL', Utils.Tuple2(Tuple3('', '', 0), ''));
+    var _onAddConnection = NS.input('WebRTC.onAddConnection',  Tuple3('', '', 0));
+    var _onRemoveConnection = NS.input('WebRTC.onRemoveConnection',  Tuple3('', '', 0));
 
     //TODO
     var cm = null;
@@ -45,7 +45,7 @@
       data.from = clientId;
       console.log('RTC send: ' + data.type);
       setTimeout(function() {
-        localRuntime.notify(requests.id, Tuple3(data.type, data.to || "", data.data));
+        localRuntime.notify(requests.id, Tuple3(data.type, data.to || '', data.data));
       });
     };
 
@@ -54,17 +54,17 @@
         answerSDP(clientId, cm, send, {
           from: from,
           data: data
-        }, function onRemoteVideoURL(from, mediaType, url) {
+        }, function onRemoteVideoURL(from, mediaType, url, upstream) {
           setTimeout(function() {
-            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Tuple3(from, mediaType, upstream?1:0), url));
           });
-        }, function onAddConnection(from, mediaType) {
+        }, function onAddConnection(from, mediaType, upstream) {
           setTimeout(function() {
-            localRuntime.notify(_onAddConnection.id, Utils.Tuple2(from, mediaType));
+            localRuntime.notify(_onAddConnection.id, Tuple3(from, mediaType, upstream?1:0));
           });
         }, function onRemoveConnection(from, mediaType) {
           setTimeout(function() {
-            localRuntime.notify(_onRemoveConnection.id, Utils.Tuple2(from, mediaType));
+            localRuntime.notify(_onRemoveConnection.id, Tuple3(from, mediaType, upstream?1:0));
           });
         });
         callback(Task.succeed(Utils.Tuple0));
@@ -79,12 +79,12 @@
         callback(Task.succeed(Utils.Tuple0));
       });
     };
-    var _addCandidate = function(from, data) {
+    var _addCandidate = function(from, data, upstream) {
       return Task.asyncFunction(function(callback) {
         addCandidate(clientId, cm, send, {
           from: from,
           data: data
-        });
+        }, upstream);
         callback(Task.succeed(Utils.Tuple0));
       });
     };
@@ -92,7 +92,7 @@
       return Task.asyncFunction(function(callback) {
         console.log(data);
         closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
-          localRuntime.setTimeout(function(){
+          localRuntime.setTimeout(function() {
             localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
           }, 0);
         });
@@ -126,9 +126,9 @@
     };
     var beforeLeave = function(peerId) {
       return Task.asyncFunction(function(callback) {
-        leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url) {
+        leave(clientId, cm, send, peerId, function onRemoteVideoURL(from, mediaType, url,upstream) {
           localRuntime.setTimeout(function() {
-            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Tuple3(from, mediaType, upstream?1:0), url));
           }, 0);
         });
         callback(Task.succeed(Utils.Tuple0));
@@ -147,7 +147,7 @@
       initialize: F2(_initialize),
       answerSDP: F2(_answerSDP),
       acceptAnswer: F2(_acceptAnswer),
-      addCandidate: F2(_addCandidate),
+      addCandidate: F3(_addCandidate),
       closeRemoteStream: F2(_closeRemoteStream),
       startStreaming: F2(_startStreaming),
       endStreaming: _endStreaming,
@@ -167,27 +167,28 @@
   }
 
   function createConnectionManager(connectionOption) {
-    var connections = {};//TODO upstream/downstream
-    var getConnection = function(id) {
+    var connections = {};
+    var getConnection = function(id, upstream) {
       if(!id) {
         throw new Error('id is null');
       }
-      if (!connections[id]) {
-        console.log('not exists: ' + id);
+      var key = id + upstream;
+      if (!connections[key]) {
+        console.log('not exists: ' + key);
         var pc = new RTCPeerConnection(connectionOption);
-        connections[id] = pc;
+        connections[key] = pc;
       }
-      return connections[id];
+      return connections[key];
     };
     var getAllConnections = function() {
       return Object.keys(connections).map(function(key) {
         return connections[key];
       });
     };
-    var removeConnection = function(peerId) {
-      delete connections[peerId];
+    var removeConnection = function(peerId, upstream) {
+      delete connections[peerId + upstream];
     };
-    var removeAllConnections = function(){
+    var removeAllConnections = function() {
       connections = {};
     };
 
@@ -197,7 +198,7 @@
     var addStream = function(peerId, mediaType, stream) {
 
       if(window.AudioContext && mediaType === 'mic') {
-        setTimeout(function(){
+        setTimeout(function() {
           var context = new AudioContext();
           var source = context.createMediaStreamSource(stream);
           var gainNode = context.createGain();
@@ -296,10 +297,10 @@
     if(peerId === clientId) {
       return;
     }
-    var pc = cm.getConnection(peerId);
+    var pc = cm.getConnection(peerId, true);
     pc.onicecandidate = function(e) {
       if (e.candidate) {
-        setTimeout(function(){
+        setTimeout(function() {
           send({
             type: 'offerCandidate',
             to: peerId,
@@ -332,7 +333,7 @@
 
   function answerSDP(clientId, cm, send, e, onRemoteVideoURL, onAddConnection, onRemoveConnection) {
     var _from = e.from;
-    var pc = cm.getConnection(_from);
+    var pc = cm.getConnection(_from, false);
     var mediaType = e.data.mediaType;
     pc.onicecandidate = function(e) {
       if (e.candidate) {
@@ -344,17 +345,17 @@
       }
     };
     pc.onaddstream = function(e) {
-      var mediaType = e.stream.getAudioTracks()[0] ? 'mic' : 'video';//TODO
+      // var mediaType = e.stream.getAudioTracks()[0] ? 'mic' : 'video';//TODO
       cm.addStream(_from, mediaType, e.stream);
-      onRemoteVideoURL(_from, mediaType, URL.createObjectURL(e.stream));
+      onRemoteVideoURL(_from, mediaType, URL.createObjectURL(e.stream), false);
     };
     pc.onremovestream = function(e) {
       console.log('onremovestream');
       // console.log(e);
       // cm.removeStream(_from, mediaType);
-      // onRemoveConnection(_from, mediaType);
+      // onRemoveConnection(_from, mediaType, 0);
     };
-    onAddConnection(_from, mediaType);
+    onAddConnection(_from, mediaType, false);
     pc.setRemoteDescription(
       new RTCSessionDescription(e.data.offer),
       function() {
@@ -373,7 +374,7 @@
   }
 
   function acceptAnswer(clientId, cm, send, e) {
-    var pc = cm.getConnection(e.from);
+    var pc = cm.getConnection(e.from, true);
     pc.setRemoteDescription(
       new RTCSessionDescription(e.data),
       function() {
@@ -381,8 +382,8 @@
       onerror);
   };
 
-  function addCandidate(clientId, cm, send, e) {
-    var pc = cm.getConnection(e.from);
+  function addCandidate(clientId, cm, send, e, upstream) {
+    var pc = cm.getConnection(e.from, upstream);
     console.log('addCandidate:', JSON.stringify(e.data));
     if (e.data.candidate) {
       pc.addIceCandidate(new RTCIceCandidate(e.data));
@@ -421,20 +422,20 @@
   }
   // unconnect curent streams to joined peer
   function leave(clientId, cm, send, from, onRemoteVideoURL) {
-    cm.removeConnection(from);
+    cm.removeConnection(from, false);
     ["mic", "video", "screen"].forEach(function(mediaType) {
       closeRemoteStream(cm, from, mediaType, onRemoteVideoURL);
     });
   }
 
   function closeRemoteStream(cm, remoteClientId, mediaType, onRemoteVideoURL) {
-    var pc = cm.getConnection(remoteClientId);
+    var pc = cm.getConnection(remoteClientId, true);
     var stream = cm.getStream(remoteClientId, mediaType);
     if(stream) {
       pc.removeStream(stream);
       cm.removeStream(remoteClientId, mediaType);
     }
-    onRemoteVideoURL(remoteClientId, mediaType, "");
+    onRemoteVideoURL(remoteClientId, mediaType, "", true);
   }
 
   function polyfill() {

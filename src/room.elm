@@ -39,7 +39,7 @@ type alias Context =
     , chat: ChatView.Model
     }
 type alias MediaType = String
-type alias Connection = (PeerId, MediaType)
+type alias Connection = (PeerId, MediaType, Int)
 
 mediaTypes = ["mic", "video", "screen"]
 initialContext : Context
@@ -250,7 +250,9 @@ update action context =
                     }
                   ChatMessage peerId s time ->
                     { newContext |
-                      chat <- ChatView.update (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time) newContext.chat
+                      chat <- ChatView.update
+                                (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time)
+                                newContext.chat
                     }
             _ -> newContext
       RTCAction event ->
@@ -404,28 +406,34 @@ mainView c = div [class "col-sm-9 col-md-9"] [div [class "row"] (mediaViews c)]
 
 mediaViews : Context -> List Html
 mediaViews c =
-  let localList = List.map (\mediaType -> localMediaWindowView c.address c mediaType) ["video", "screen"]
-      remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) (Set.toList c.rtc.connections)
-      both = List.concat [localList, remoteList]
-      filterd = List.filter (\maybe -> case maybe of
-          Just a -> True
-          Nothing -> False
-        ) both
-  in List.map (\(Just a) -> a) filterd
+  let
+    localList = List.map (\mediaType -> localMediaWindowView c.address c mediaType) ["video", "screen"]
+    remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) (Set.toList c.rtc.connections)
+    both = List.concat [localList, remoteList]
+    filterd = List.filter (\maybe -> case maybe of
+        Just a -> True
+        Nothing -> False
+      ) both
+  in
+    List.map (\(Just a) -> a) filterd
 
 localMediaWindowView : Address Action -> Context -> String -> Maybe Html
 localMediaWindowView address c mediaType =
-  let title = "Local " ++ mediaType
-      maybeVideoUrl = Dict.get mediaType c.rtc.localVideoUrls
-  in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl True) maybeVideoUrl
+  let
+    title = "Local " ++ mediaType
+    maybeVideoUrl = Dict.get mediaType c.rtc.localVideoUrls
+  in
+    Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl True) maybeVideoUrl
 
 remoteMediaWindowView : Address Action -> Context -> Connection -> Maybe Html
 remoteMediaWindowView address c connection =
-  let (peerId, mediaType) = connection
-      user = userOf c peerId
-      title = String.concat [user.displayName]
-      maybeVideoUrl = Dict.get connection c.rtc.videoUrls
-  in Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
+  let
+    (peerId, mediaType, upstream) = connection
+    user = userOf c peerId
+    title = String.concat [user.displayName]
+    maybeVideoUrl = Dict.get connection c.rtc.videoUrls
+  in
+    Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
 
 mediaWindowView : Context -> String -> String -> String -> Bool -> Html
 mediaWindowView c mediaType title videoUrl local =
