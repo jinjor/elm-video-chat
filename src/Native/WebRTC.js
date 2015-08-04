@@ -93,7 +93,7 @@
         console.log(data);
         closeRemoteStream(cm, from, data.mediaType, function onRemoteVideoURL(from, mediaType, url) {
           localRuntime.setTimeout(function() {
-            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Utils.Tuple2(from, mediaType), url));
+            localRuntime.notify(_onRemoteVideoURL.id, Utils.Tuple2(Tuple3(from, mediaType, 1), url));
           }, 0);
         });
         callback(Task.succeed(Utils.Tuple0));
