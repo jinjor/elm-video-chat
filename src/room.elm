@@ -5,7 +5,7 @@ import Json.Encode
 import Task exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, src, classList)
+import Html.Attributes exposing (class, src, classList, action, type', method, value)
 import Html.Events exposing (..)
 import Http
 
@@ -25,6 +25,7 @@ import Lib.WebRTC as WebRTC
 import Lib.VideoControl as VideoControl
 import Lib.ChatView as ChatView
 import Lib.Modal as Modal
+import Lib.UserSearch as UserSearch
 
 import Debug exposing (log)
 
@@ -39,6 +40,7 @@ type alias Context =
     , rtc : WebRTC.Model
     , chat : ChatView.Model
     , modal : Modal.Model
+    , userSearch : UserSearch.Model
     }
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType, Int)
@@ -53,6 +55,7 @@ initialContext =
   , rtc = WebRTC.init
   , chat = ChatView.init
   , modal = Modal.init
+  , userSearch = UserSearch.init
   }
 
 -- Data access
@@ -201,6 +204,7 @@ type Action
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
   | ModalAction Modal.Action
+  | UserSearchAction UserSearch.Action
   | Init PeerId String
   | InitRoom API.InitialData
   | StartStreaming (String, List PeerId)
@@ -289,6 +293,14 @@ update action context =
         { context |
           modal <- Modal.update action context.modal
         }
+      UserSearchAction action ->
+        let
+          (newModel, maybeTask) = UserSearch.update action context.userSearch
+          -- TODO use maybeTask
+        in
+          { context |
+            userSearch <- newModel
+          }
       _ -> context
 
 -- View --
@@ -317,7 +329,6 @@ windowHeader title buttons =
   in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
 
--- View
 view : Context -> Html
 view c =
   div []
@@ -326,7 +337,7 @@ view c =
       [ statusView c
       , mainView c
       , ChatView.view (forwardTo c.address ChatAction) c.chat
-      , Modal.view "Invite" (div [] [text "hogehoge"]) (forwardTo c.address ModalAction) c.modal
+      , Modal.view "Invite" (div [] [userSearchView c.address c]) (forwardTo c.address ModalAction) c.modal
       ]
     ]
 
@@ -464,6 +475,31 @@ mediaWindowView c mediaType title videoUrl local =
          | otherwise -> [fullscreenButton c.address videoUrl]
     hidden = if mediaType == "mic" then True else False
   in window (windowHeader title buttons) videoHtml local hidden
+
+
+
+
+userSearchView : Address Action -> Context -> Html
+userSearchView address model =
+  let
+    (userSearchInput, userSearchHidden) =
+      UserSearch.view (Signal.forwardTo address UserSearchAction) model.userSearch
+    input_ = div [class "form-group"]
+      [ label [] [text "Invite"]
+      -- , text "@"
+      , userSearchInput
+      ]
+      -- submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      -- form_ = Html.form [action ("/invite"), method "POST"] [input_, submit_]
+    submit_ = Html.form
+      [ action ("/api/invite")
+      , method "POST"
+      ]
+      [ userSearchHidden
+      , input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      ]
+    form_ = div [] [input_, submit_]
+  in div [] [form_]
 
 
 -- Main

@@ -11,12 +11,12 @@ import Lib.URI exposing(encodeURI, decodeURI)
 import Dict exposing (Dict)
 
 import Lib.API exposing (..)
-import Lib.Typeahead as Typeahead
+import Lib.UserSearch as UserSearch
 
 
 type alias Model =
   { roomName : String
-  , typeahead : Typeahead.Model User
+  , userSearch : UserSearch.Model
   , rooms: List Room
   , me: User
   }
@@ -25,9 +25,9 @@ type alias Model =
 initialContext : Model
 initialContext =
   { roomName = ""
-  , typeahead = Typeahead.init "" (\user -> user.name) userOptionToHtml fetchOptions
+  , userSearch = UserSearch.init
   , rooms = []
-  , me = { name="", displayName="", image="", authority = "" }
+  , me = { name = "", displayName = "", image = "", authority = "" }
   }
 
 -- context : Signal Context
@@ -50,18 +50,13 @@ fetchRoom = getRooms
       `andThen` (\initData -> (Signal.send actions.address (Init initData)))
       `onError` (\err -> log "err" (succeed ()))
 
--- TODO
-fetchOptions : String -> Task () (List User)
-fetchOptions q = searchUser q `onError` (\err -> log "err" (succeed []))
-
-
 
 --- Action
 type Action
   = NoOp
   | Init InitialRoomsData
   | UpdateRoomName String
-  | TypeaheadAction (Typeahead.Action User)
+  | UserSearchAction UserSearch.Action
 
 
 update : Action -> Model -> (Model, Maybe (Task () ()))
@@ -75,11 +70,13 @@ update action model =
       UpdateRoomName roomName -> (,) { model |
         roomName <- roomName
       } Nothing
-      TypeaheadAction action ->
-        let (newModel, maybeTask) = Typeahead.update action model.typeahead
-        in (,) { model |
-              typeahead <- newModel
-            } (Maybe.map (\task -> task  `andThen` (\action -> Signal.send actions.address (TypeaheadAction action))) maybeTask)
+      UserSearchAction action ->
+        let
+          (newModel, maybeTask) = UserSearch.update action model.userSearch
+        in
+          (,) { model |
+              userSearch <- newModel
+            } (Maybe.map (\task -> task `andThen` (\action -> Signal.send actions.address (UserSearchAction action))) maybeTask)
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
@@ -90,7 +87,7 @@ view address model =
   let
     inviteView =
       [ hr [] []
-      , typeaheadView address model
+      , userSearchView address model
       ]
   in
     div []
@@ -102,26 +99,26 @@ view address model =
       ]
 
 
-typeaheadView : Address Action -> Model -> Html
-typeaheadView address model =
+userSearchView : Address Action -> Model -> Html
+userSearchView address model =
   let
+    (userSearchInput, userSearchHidden) =
+      UserSearch.view (Signal.forwardTo address UserSearchAction) model.userSearch
     input_ = div [class "form-group"]
       [ label [] [text "Invite"]
       -- , text "@"
-      , Typeahead.view (Signal.forwardTo address TypeaheadAction) model.typeahead
+      , userSearchInput
       ]
       -- submit_ = input [ type' "submit", class "btn btn-primary", value "Create" ] []
       -- form_ = Html.form [action ("/invite"), method "POST"] [input_, submit_]
-
     submit_ = Html.form
       [ action ("/invite")
       , method "POST"
       ]
-      [ input [ type' "hidden", name "invited", value model.typeahead.field ] []
+      [ userSearchHidden
       , input [ type' "submit", class "btn btn-primary", value "Create" ] []
       ]
     form_ = div [] [input_, submit_]
-
   in div [] [form_]
 
 createRoomView : Address Action -> Model -> Html
@@ -171,13 +168,6 @@ roomView room =
 peerView : User -> Html
 peerView peer = li [] [text peer.name]
 
-userOptionToHtml : User -> Html
-userOptionToHtml user =
-  div [class "twitter-user"]
-    [ img [class "twitter-user-image", src user.image] []
-    , span [class "twitter-user-name"] [text user.displayName]
-    , span [class "twitter-user-account"] [text <| "@" ++ user.name]
-    ]
 
 
 --- Main
