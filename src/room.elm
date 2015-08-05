@@ -190,8 +190,26 @@ messageDecoder = Json.object2 (,)
   ("message" := Json.string)
   ("time" := Json.float)
 
+
 context : Signal Model
-context = Signal.foldp update initialContext actionSignal
+context = Signal.map fst state
+
+
+state : Signal (Model, Maybe (Task () Action))
+state =
+  Signal.foldp
+    (\action (model, _) -> update action model)
+    (initialContext, Nothing) actionSignal
+
+
+port runState : Signal (Task () ())
+port runState =
+  Signal.map (\(_, maybeTask) -> case maybeTask of
+      Just task -> task `andThen` (\action -> Signal.send actions.address action)
+      Nothing -> Task.succeed ()
+      ) state
+
+
 
 userOf : Model -> PeerId -> User
 userOf model peerId = case Dict.get peerId model.rtc.users of
@@ -239,7 +257,7 @@ actionSignal = Signal.mergeMany
 
 -- Update --
 
-update : Action -> Model -> Model
+update : Action -> Model -> (Model, Maybe (Task () Action))
 update action model =
     case {-log "action"-} action of
       WSAction event ->
@@ -255,55 +273,55 @@ update action model =
               in
                 case decodedMessage of
                   RTCMessage rtcMes ->
-                    { newContext |
+                    (,) { newContext |
                       rtc <- WebRTC.update rtcMes newContext.rtc
-                    }
+                    } Nothing
                   ChatMessage peerId s time ->
-                    { newContext |
+                    (,) { newContext |
                       chat <- ChatView.update
                                 (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time)
                                 newContext.chat
-                    }
-            _ -> newContext
+                    } Nothing
+            _ -> (,) newContext Nothing
       RTCAction event ->
-        { model |
+        (,) { model |
           rtc <- WebRTC.update event model.rtc
-        }
+        } Nothing
       Init selfPeerId roomName ->
-        { model |
+        (,) { model |
           selfPeerId <- selfPeerId,
           roomName <- roomName
-        }
+        } Nothing
       InitRoom initial ->
-        { model |
+        (,) { model |
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) model.rtc,
           chat <- ChatView.update (ChatView.MyName initial.user.displayName) model.chat
-        }
+        } Nothing
       StartStreaming a ->
-        { model |
+        (,) { model |
           rtc <- WebRTC.update (WebRTC.StartStreaming a) model.rtc
-        }
+        } Nothing
       EndStreaming a ->
-        { model |
+        (,) { model |
           rtc <- WebRTC.update (WebRTC.EndStreaming a) model.rtc
-        }
+        } Nothing
       ChatAction action ->
-        { model |
+        (,) { model |
           chat <- ChatView.update action model.chat
-        }
+        } Nothing
       ModalAction action ->
-        { model |
+        (,) { model |
           modal <- Modal.update action model.modal
-        }
+        } Nothing
       UserSearchAction action ->
         let
           (newModel, maybeTask) = UserSearch.update action model.userSearch
-          -- TODO use maybeTask
+          task = Maybe.map (Task.map UserSearchAction) maybeTask
         in
-          { model |
+          (,) { model |
             userSearch <- newModel
-          }
-      _ -> model
+          } task
+      _ -> (,) model Nothing
 
 -- View --
 
