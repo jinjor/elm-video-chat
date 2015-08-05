@@ -32,7 +32,7 @@ import Debug exposing (log)
 
 -- Models
 
-type alias Context =
+type alias Model =
     { selfPeerId: PeerId
     , roomName: String
     , address: Signal.Address Action
@@ -45,8 +45,10 @@ type alias Context =
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType, Int)
 
+mediaTypes : List MediaType
 mediaTypes = ["mic", "video", "screen"]
-initialContext : Context
+
+initialContext : Model
 initialContext =
   { selfPeerId = ""
   , roomName = ""
@@ -104,8 +106,8 @@ errorLog e = case e of
 
 port runTasks : Signal (Task Error ())
 port runTasks =
-  let f (time, action) c = case {-log "runTasks"-} action of
-      InitRoom initial -> (WS.send <| joinToJson c.selfPeerId c.roomName) `onError` (\e -> fail <| WSError e)
+  let f (time, action) model = case {-log "runTasks"-} action of
+      InitRoom initial -> (WS.send <| joinToJson model.selfPeerId model.roomName) `onError` (\e -> fail <| WSError e)
       WSAction event ->
         case event of
           WS.Message s ->
@@ -114,7 +116,7 @@ port runTasks =
             in
               case decodedMessage of
                 RTCMessage (WebRTC.Request x) ->
-                  (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
+                  (WS.send <| signalToJson model.selfPeerId model.roomName x) `onError` (\e -> fail <| WSError e)
                 RTCMessage x ->
                   WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
                 ChatMessage _ _ _ ->
@@ -123,9 +125,9 @@ port runTasks =
                   Task.succeed ()
           _ ->
             Task.succeed ()
-      RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson c.selfPeerId c.roomName x) `onError` (\e -> fail <| WSError e)
+      RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson model.selfPeerId model.roomName x) `onError` (\e -> fail <| WSError e)
       RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
-      ChatAction (ChatView.Send x) -> (WS.send <| messageToJson c.selfPeerId c.roomName x time) `onError` (\e -> fail <| WSError e)
+      ChatAction (ChatView.Send x) -> (WS.send <| messageToJson model.selfPeerId model.roomName x time) `onError` (\e -> fail <| WSError e)
       ChatAction (ChatView.Open) -> (ChatView.afterUpdate ChatView.ScrollDown) `onError` (\e -> fail <| ChatViewError e)
       ChatAction x -> ChatView.afterUpdate x `onError` (\e -> fail <| ChatViewError e)
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
@@ -188,13 +190,13 @@ messageDecoder = Json.object2 (,)
   ("message" := Json.string)
   ("time" := Json.float)
 
-context : Signal Context
+context : Signal Model
 context = Signal.foldp update initialContext actionSignal
 
-userOf : Context -> PeerId -> User
-userOf c peerId = case Dict.get peerId c.rtc.users of
+userOf : Model -> PeerId -> User
+userOf model peerId = case Dict.get peerId model.rtc.users of
   Just user -> user
-  Nothing -> { name="", displayName="", image="", authority="" }
+  Nothing -> { name = "", displayName = "", image = "", authority = "" }
 
 -- Action --
 
@@ -237,13 +239,13 @@ actionSignal = Signal.mergeMany
 
 -- Update --
 
-update : Action -> Context -> Context
-update action context =
+update : Action -> Model -> Model
+update action model =
     case {-log "action"-} action of
       WSAction event ->
         let newContext =
-          { context |
-            ws <- WS.update event context.ws
+          { model |
+            ws <- WS.update event model.ws
           }
         in
           case event of
@@ -264,44 +266,44 @@ update action context =
                     }
             _ -> newContext
       RTCAction event ->
-        { context |
-          rtc <- WebRTC.update event context.rtc
+        { model |
+          rtc <- WebRTC.update event model.rtc
         }
       Init selfPeerId roomName ->
-        { context |
+        { model |
           selfPeerId <- selfPeerId,
           roomName <- roomName
         }
       InitRoom initial ->
-        { context |
-          rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) context.rtc,
-          chat <- ChatView.update (ChatView.MyName initial.user.displayName) context.chat
+        { model |
+          rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) model.rtc,
+          chat <- ChatView.update (ChatView.MyName initial.user.displayName) model.chat
         }
       StartStreaming a ->
-        { context |
-          rtc <- WebRTC.update (WebRTC.StartStreaming a) context.rtc
+        { model |
+          rtc <- WebRTC.update (WebRTC.StartStreaming a) model.rtc
         }
       EndStreaming a ->
-        { context |
-          rtc <- WebRTC.update (WebRTC.EndStreaming a) context.rtc
+        { model |
+          rtc <- WebRTC.update (WebRTC.EndStreaming a) model.rtc
         }
       ChatAction action ->
-        { context |
-          chat <- ChatView.update action context.chat
+        { model |
+          chat <- ChatView.update action model.chat
         }
       ModalAction action ->
-        { context |
-          modal <- Modal.update action context.modal
+        { model |
+          modal <- Modal.update action model.modal
         }
       UserSearchAction action ->
         let
-          (newModel, maybeTask) = UserSearch.update action context.userSearch
+          (newModel, maybeTask) = UserSearch.update action model.userSearch
           -- TODO use maybeTask
         in
-          { context |
+          { model |
             userSearch <- newModel
           }
-      _ -> context
+      _ -> model
 
 -- View --
 
@@ -314,11 +316,11 @@ fullscreenButton address videoURL =
       div [class "glyphicon glyphicon-fullscreen"] []
     ]
 
-windowCloseButton : Context -> String -> Html
-windowCloseButton c mediaType =
+windowCloseButton : Address Action -> Model -> String -> Html
+windowCloseButton address model mediaType =
   div
     [ class "btn pull-right"
-    , onClick c.address (EndStreaming (mediaType, (Set.toList c.rtc.peers)))
+    , onClick address (EndStreaming (mediaType, (Set.toList model.rtc.peers)))
     ] [
       div [class "glyphicon glyphicon-remove"] []
     ]
@@ -329,15 +331,15 @@ windowHeader title buttons =
   in div [class "panel-heading clearfix"] [(text title), buttonGroup]
 
 
-view : Context -> Html
-view c =
+view : Address Action -> Model -> Html
+view address model =
   div []
-    [ Header.header { user = c.rtc.me, connected = c.ws.connected }
+    [ Header.header { user = model.rtc.me, connected = model.ws.connected }
     , div [class "container"]
-      [ statusView c
-      , mainView c
-      , ChatView.view (forwardTo c.address ChatAction) c.chat
-      , Modal.view "Invite" (div [] [userSearchView c.address c]) (forwardTo c.address ModalAction) c.modal
+      [ statusView address model
+      , mainView address model
+      , ChatView.view (forwardTo address ChatAction) model.chat
+      , Modal.view "Invite" (div [] [userSearchView address model]) (forwardTo address ModalAction) model.modal
       ]
     ]
 
@@ -351,8 +353,8 @@ window header body local hidden =
     [ div [class ("panel " ++ face)] [header, body]
     ]
 
-roomTitle : Context -> Html
-roomTitle c = h2 [ class "room-name" ] [text c.roomName]
+roomTitle : Model -> Html
+roomTitle model = h2 [ class "room-name" ] [text model.roomName]
 
 madiaIcon : String -> Html
 madiaIcon mediaType =
@@ -362,33 +364,33 @@ madiaIcon mediaType =
       "screen" -> "fa fa-desktop"
   in i [class classes] []
 
-madiaButton : Context -> String -> Html
-madiaButton c mediaType =
+madiaButton : Address Action -> Model -> String -> Html
+madiaButton address model mediaType =
   let classes = case mediaType of
         "video" -> "fa fa-video-camera"
         "mic" -> "fa fa-microphone"
         "screen" -> "fa fa-desktop"
-      streaming = case Dict.get mediaType c.rtc.localVideoUrls of
+      streaming = case Dict.get mediaType model.rtc.localVideoUrls of
         Just _ -> True
         Nothing -> False
       face = if streaming then "btn-primary" else "btn-default"
       action = if streaming then EndStreaming (mediaType, peers) else StartStreaming (mediaType, peers)
-      peers = Set.toList c.rtc.peers
+      peers = Set.toList model.rtc.peers
   in button
     [ Html.Attributes.type' "button"
     , class ("btn " ++ face)
-    , onClick c.address action
+    , onClick address action
     ] [madiaIcon mediaType]
 
-mediaButtons : Address Action -> Context -> Html
-mediaButtons address c = div
+mediaButtons : Address Action -> Model -> Html
+mediaButtons address model = div
   [ Html.Attributes.attribute "role" "group"
   , class "btn-group"
-  ] (List.map (madiaButton c) mediaTypes)
+  ] (List.map (madiaButton address model) mediaTypes)
 
-peerView : Address Action -> Context -> PeerId -> Html
-peerView address c peer =
-  let user = userOf c peer
+peerView : Address Action -> Model -> PeerId -> Html
+peerView address model peer =
+  let user = userOf model peer
   in li []
     [ div []
       [ -- i [class "fa fa-user"] [],
@@ -397,16 +399,16 @@ peerView address c peer =
       ]
     ]
 
-peerViews : Address Action -> Context -> List PeerId -> Html
-peerViews address c peers = ul
+peerViews : Address Action -> Model -> List PeerId -> Html
+peerViews address model peers = ul
   [ class "user-list list-unstyled hidden-xs"
-  ] (List.map (\peer -> peerView address c peer) peers)
+  ] (List.map (\peer -> peerView address model peer) peers)
 
-statusView : Context -> Html
-statusView c =
+statusView : Address Action -> Model -> Html
+statusView address model =
   let
     myVolume =
-      case List.head (List.filter (\(peerId, _) -> peerId == c.selfPeerId) c.rtc.volumes) of
+      case List.head (List.filter (\(peerId, _) -> peerId == model.selfPeerId) model.rtc.volumes) of
         Just (_, volume) -> volume
         Nothing -> 0
     myVolumeLog = round <| (logBase 1.14 (toFloat myVolume))
@@ -414,27 +416,28 @@ statusView c =
     div [class "col-sm-3 col-md-3"]
       [ div [class "status-panel row panel panel-default"]
         [ div [class "panel-body"]
-            [ roomTitle c
+            [ roomTitle model
             , button
               [ class "btn btn-default"
-              , onClick c.address (ModalAction Modal.open)
+              , onClick address (ModalAction Modal.open)
               ]
               [ text "Invite"]
             , div [] [text <| String.repeat (max (myVolumeLog - 5) 1) "|" ]
-            , mediaButtons c.address c
-            , peerViews c.address c (Set.toList c.rtc.peers)
+            , mediaButtons address model
+            , peerViews address model (Set.toList model.rtc.peers)
             ]
         ]
       ]
 
-mainView : Context -> Html
-mainView c = div [class "col-sm-9 col-md-9"] [div [class "row"] (mediaViews c)]
+mainView : Address Action -> Model -> Html
+mainView address model =
+  div [class "col-sm-9 col-md-9"] [div [class "row"] (mediaViews address model)]
 
-mediaViews : Context -> List Html
-mediaViews c =
+mediaViews : Address Action -> Model -> List Html
+mediaViews address model =
   let
-    localList = List.map (\mediaType -> localMediaWindowView c.address c mediaType) ["video", "screen"]
-    remoteList = List.map (\connection -> remoteMediaWindowView c.address c connection) (Set.toList c.rtc.connections)
+    localList = List.map (\mediaType -> localMediaWindowView address model mediaType) ["video", "screen"]
+    remoteList = List.map (\connection -> remoteMediaWindowView address model connection) (Set.toList model.rtc.connections)
     both = List.concat [localList, remoteList]
     filterd = List.filter (\maybe -> case maybe of
         Just a -> True
@@ -443,26 +446,26 @@ mediaViews c =
   in
     List.map (\(Just a) -> a) filterd
 
-localMediaWindowView : Address Action -> Context -> String -> Maybe Html
-localMediaWindowView address c mediaType =
+localMediaWindowView : Address Action -> Model -> String -> Maybe Html
+localMediaWindowView address model mediaType =
   let
     title = "Local " ++ mediaType
-    maybeVideoUrl = Dict.get mediaType c.rtc.localVideoUrls
+    maybeVideoUrl = Dict.get mediaType model.rtc.localVideoUrls
   in
-    Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl True) maybeVideoUrl
+    Maybe.map (\videoUrl -> mediaWindowView address model mediaType title videoUrl True) maybeVideoUrl
 
-remoteMediaWindowView : Address Action -> Context -> Connection -> Maybe Html
-remoteMediaWindowView address c connection =
+remoteMediaWindowView : Address Action -> Model -> Connection -> Maybe Html
+remoteMediaWindowView address model connection =
   let
     (peerId, mediaType, upstream) = connection
-    user = userOf c peerId
+    user = userOf model peerId
     title = String.concat [user.displayName]
-    maybeVideoUrl = Dict.get connection c.rtc.videoUrls
+    maybeVideoUrl = Dict.get connection model.rtc.videoUrls
   in
-    Maybe.map (\videoUrl -> mediaWindowView c mediaType title videoUrl False) maybeVideoUrl
+    Maybe.map (\videoUrl -> mediaWindowView address model mediaType title videoUrl False) maybeVideoUrl
 
-mediaWindowView : Context -> String -> String -> String -> Bool -> Html
-mediaWindowView c mediaType title videoUrl local =
+mediaWindowView : Address Action -> Model -> String -> String -> String -> Bool -> Html
+mediaWindowView address model mediaType title videoUrl local =
   let
     attrs =
       [ src videoUrl
@@ -471,15 +474,12 @@ mediaWindowView c mediaType title videoUrl local =
     videoHtml =
       video attrs []
     buttons =
-      if | local -> [windowCloseButton c mediaType, fullscreenButton c.address videoUrl]
-         | otherwise -> [fullscreenButton c.address videoUrl]
+      if | local -> [windowCloseButton address model mediaType, fullscreenButton address videoUrl]
+         | otherwise -> [fullscreenButton address videoUrl]
     hidden = if mediaType == "mic" then True else False
   in window (windowHeader title buttons) videoHtml local hidden
 
-
-
-
-userSearchView : Address Action -> Context -> Html
+userSearchView : Address Action -> Model -> Html
 userSearchView address model =
   let
     (userSearchInput, userSearchHidden) =
@@ -504,7 +504,7 @@ userSearchView address model =
 
 -- Main
 main : Signal Html
-main = view <~ context
+main = (view actions.address) <~ context
 
 
 
