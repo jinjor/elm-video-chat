@@ -15,8 +15,6 @@ import Date exposing (Date)
 import Time exposing (Time)
 import String
 
-import Lib.PanelHeader exposing (..)
-
 import Native.ChatView
 
 -- Models

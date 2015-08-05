@@ -24,6 +24,7 @@ import Lib.WebSocket as WS
 import Lib.WebRTC as WebRTC
 import Lib.VideoControl as VideoControl
 import Lib.ChatView as ChatView
+import Lib.Modal as Modal
 
 import Debug exposing (log)
 
@@ -36,7 +37,8 @@ type alias Context =
     , address: Signal.Address Action
     , ws : WS.Model
     , rtc : WebRTC.Model
-    , chat: ChatView.Model
+    , chat : ChatView.Model
+    , modal : Modal.Model
     }
 type alias MediaType = String
 type alias Connection = (PeerId, MediaType, Int)
@@ -50,6 +52,7 @@ initialContext =
   , ws = WS.init
   , rtc = WebRTC.init
   , chat = ChatView.init
+  , modal = Modal.init
   }
 
 -- Data access
@@ -197,6 +200,7 @@ type Action
   | WSAction WS.Action
   | RTCAction WebRTC.Action
   | ChatAction ChatView.Action
+  | ModalAction Modal.Action
   | Init PeerId String
   | InitRoom API.InitialData
   | StartStreaming (String, List PeerId)
@@ -281,6 +285,10 @@ update action context =
         { context |
           chat <- ChatView.update action context.chat
         }
+      ModalAction action ->
+        { context |
+          modal <- Modal.update action context.modal
+        }
       _ -> context
 
 -- View --
@@ -318,6 +326,7 @@ view c =
       [ statusView c
       , mainView c
       , ChatView.view (forwardTo c.address ChatAction) c.chat
+      , Modal.view "Invite" (div [] [text "hogehoge"]) (forwardTo c.address ModalAction) c.modal
       ]
     ]
 
@@ -331,6 +340,7 @@ window header body local hidden =
     [ div [class ("panel " ++ face)] [header, body]
     ]
 
+roomTitle : Context -> Html
 roomTitle c = h2 [ class "room-name" ] [text c.roomName]
 
 madiaIcon : String -> Html
@@ -394,6 +404,11 @@ statusView c =
       [ div [class "status-panel row panel panel-default"]
         [ div [class "panel-body"]
             [ roomTitle c
+            , button
+              [ class "btn btn-default"
+              , onClick c.address (ModalAction Modal.open)
+              ]
+              [ text "Invite"]
             , div [] [text <| String.repeat (max (myVolumeLog - 5) 1) "|" ]
             , mediaButtons c.address c
             , peerViews c.address c (Set.toList c.rtc.peers)
