@@ -43,6 +43,21 @@ nocacheGet decoder url =
       }
   in Http.fromJson decoder (Http.send Http.defaultSettings request)
 
+postJson : Json.Decoder value -> String -> String -> Task Http.Error value
+postJson decoder url body =
+  let
+    request =
+      { verb = "POST"
+      , headers =
+        [ ("Cache-Control", "no-cache")
+        , ("If-Modified-Since", "Thu, 01 Jun 1970 00:00:00 GMT")
+        , ("Content-Type", "application/json")
+        ]
+      , url = url
+      , body = Http.string body
+      }
+  in Http.fromJson decoder (Http.send Http.defaultSettings request)
+
 getInitialData : String -> Task Http.Error InitialData
 getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
 
@@ -52,6 +67,17 @@ getRooms = nocacheGet initialRoomsDataDecoder "/api/rooms"
 searchUser : String -> Task Http.Error (List User)
 searchUser q = nocacheGet (Json.list userDecoder) ("/api/search-user/" ++ q)
 
+
+postInvitation : String -> String -> Task Http.Error ()
+postInvitation roomName userName =
+  let
+    url = "/api/invite/" ++ roomName
+    -- body = (Http.string <| "invited=" ++ userName ++ "&")
+    body = (Http.string <| "{\"invited\":\"" ++ userName ++ "\"}")
+    -- body = (Http.string <|  """{ "sortBy": "coolness", "take": 10 }""")
+    -- body = Http.multipart [ Http.stringData "invited" userName]
+  in
+    postJson (Json.null ()) url ("{\"invited\":\"" ++ userName ++ "\"}")
 
 initialDataDecoder : Json.Decoder InitialData
 initialDataDecoder =

@@ -35,7 +35,7 @@ import Debug exposing (log)
 type alias Model =
     { selfPeerId: PeerId
     , roomName: String
-    , address: Signal.Address Action
+    , me : User
     , ws : WS.Model
     , rtc : WebRTC.Model
     , chat : ChatView.Model
@@ -52,7 +52,7 @@ initialContext : Model
 initialContext =
   { selfPeerId = ""
   , roomName = ""
-  , address = actions.address
+  , me = { name = "", displayName = "", image = "", authority = "" }
   , ws = WS.init
   , rtc = WebRTC.init
   , chat = ChatView.init
@@ -133,6 +133,9 @@ port runTasks =
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
       StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
       EndStreaming x -> WebRTC.doTask (WebRTC.EndStreaming x) `onError` (\e -> fail <| RTCError e)
+      SubmitInvite -> API.postInvitation model.roomName (UserSearch.field model.userSearch)
+        `onError` (\e -> fail <| FetchError e)
+        `andThen` (\_ -> Signal.send actions.address EndInvitation)
       _ -> Task.succeed ()
   in Signal.map2 f (Time.timestamp actionSignal) context
 
@@ -230,6 +233,8 @@ type Action
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
   | FullScreen String
+  | SubmitInvite
+  | EndInvitation
 
 type DecodedMessage
   = RTCMessage WebRTC.Action
@@ -294,6 +299,7 @@ update action model =
         } Nothing
       InitRoom initial ->
         (,) { model |
+          me <- initial.user,
           rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) model.rtc,
           chat <- ChatView.update (ChatView.MyName initial.user.displayName) model.chat
         } Nothing
@@ -321,6 +327,11 @@ update action model =
           (,) { model |
             userSearch <- newModel
           } task
+      EndInvitation ->
+        (,) { model |
+          modal <- Modal.init,
+          userSearch <- UserSearch.init
+        } Nothing
       _ -> (,) model Nothing
 
 -- View --
@@ -430,20 +441,24 @@ statusView address model =
         Just (_, volume) -> volume
         Nothing -> 0
     myVolumeLog = round <| (logBase 1.14 (toFloat myVolume))
+    invitationButton =
+      if model.me.authority == "twitter"
+        then [button
+          [ class "btn btn-default"
+          , onClick address (ModalAction Modal.open)
+          ]
+          [ text "Invite"]]
+        else []
   in
     div [class "col-sm-3 col-md-3"]
       [ div [class "status-panel row panel panel-default"]
         [ div [class "panel-body"]
-            [ roomTitle model
-            , button
-              [ class "btn btn-default"
-              , onClick address (ModalAction Modal.open)
-              ]
-              [ text "Invite"]
-            , div [] [text <| String.repeat (max (myVolumeLog - 5) 1) "|" ]
+            ([ roomTitle model ] ++
+            invitationButton ++
+            [ div [] [text <| String.repeat (max (myVolumeLog - 5) 1) "|" ]
             , mediaButtons address model
             , peerViews address model (Set.toList model.rtc.peers)
-            ]
+            ])
         ]
       ]
 
@@ -514,7 +529,12 @@ userSearchView address model =
       , method "POST"
       ]
       [ userSearchHidden
-      , input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      -- , input [ type' "submit", class "btn btn-primary", value "Create" ] []
+      , input
+        [ class "btn btn-primary"
+        , value "Invite"
+        , onClick address SubmitInvite
+        ] []
       ]
     form_ = div [] [input_, submit_]
   in div [] [form_]

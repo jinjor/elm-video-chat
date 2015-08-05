@@ -1,4 +1,4 @@
-module Lib.UserSearch (Model, init, Action(..), update, view) where
+module Lib.UserSearch (Model, init, Action(..), update, view, field) where
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -66,3 +66,6 @@ fetchOptions : String -> Task () (List User)
 fetchOptions q = searchUser q `onError` (\err -> log "err" (succeed []))
 
 --
+
+field : Model -> String
+field model = model.typeahead.field

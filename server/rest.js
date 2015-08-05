@@ -5,7 +5,8 @@ var Twit = require('twit');
 module.exports = function(app, staticRouter, storage, session, ws) {
 
   var invite = session.isDevMode ? function invite(T, user, to, roomId, cb) {
-    console.log(to);
+    console.log('invite(debug): ' + to);
+    console.log('invite(debug): ' + roomId);
     cb();
   } : function invite(T, user, to, roomId, cb) {
     var url = session.rootURL + '/room/' + roomId;// + '?via=twitter'
@@ -105,8 +106,11 @@ module.exports = function(app, staticRouter, storage, session, ws) {
   //   url: 'turn:homeo@turn.bistri.com:80',
   //   credential: 'homeo'
   // }];
+  // var iceServers =  [{
+  //   url: 'stun:46.137.243.49:3478'
+  // }];
   var iceServers =  [{
-    url: 'stun:46.137.243.49:3478'
+    url: 'stun:stun.l.google.com:19302'
   }];
 
   app.get('/room/:id', function(req, res, next) {
@@ -283,4 +287,43 @@ module.exports = function(app, staticRouter, storage, session, ws) {
 
   });
 
+  app.post('/api/invite/:roomId', function(req, res) {
+    //TODO
+    if(!req.session.user) {
+      res.redirect('/');
+      return;
+    }
+    storage.getUser(req.session.user).then(function(user) {
+      if(user.authority !== 'twitter') {
+        res.sendStatus(401);
+        return;
+      }
+      var T = new Twit({
+          consumer_key: req.session.passport.user.twitterConsumerKey
+        , consumer_secret: req.session.passport.user.twitterConsumerSecret
+        , access_token: req.session.passport.user.twitterAccessToken
+        , access_token_secret: req.session.passport.user.twitterAccessTokenSecret
+      });
+      var roomId = req.params.roomId;
+      var to = req.body.invited;
+
+      invite(T, req.session.user, to, roomId, function(e) {
+        if(e) {
+          console.log(e);
+          var errorMessage = 'error!';
+          if(e.code === 150) {
+            errorMessage = 'The user @' + to + ' does not exist or is not following you.';
+          }
+          res.send(errorMessage);
+          return;
+        }
+        res.end();
+      });
+
+    }).catch(function(e) {
+      console.log(e);
+      res.sendStatus(500);
+    });
+
+  });
 };

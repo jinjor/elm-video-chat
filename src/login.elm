@@ -55,33 +55,6 @@ view address model =
       ]
     ]
 
-  -- <div class="login-wrapper">
-  --   <div class="panel panel-default center-block" style="max-width: 500px;">
-  --     <div class="panel-heading">
-  --       <h2 class="panel-title">please login</h2>
-  --     </div>
-  --     <div class="panel-body">
-  --       <form class="form-horizontal col-md-12" action="/api/login" method="POST">
-  --         <div class="form-group row">
-  --           <label class="col-sm-2 control-label">Mail</label>
-  --           <div class="col-sm-10">
-  --             <input class="form-control" name="email" value=""></input>
-  --           </div>
-  --         </div>
-  --         <div class="form-group row">
-  --           <label class="col-sm-2 control-label">Password</label>
-  --           <div class="col-sm-10">
-  --             <input class="form-control" type="password" name="password" value=""></input>
-  --           </div>
-  --         </div>
-  --         <div class="text-center">
-  --           <input class="login-submit btn btn-primary" type="submit" value="submit"></input>
-  --         </div>
-  --       </form>
-  --     </div>
-  --   </div>
-  -- </div>
-
 --- Main
 main : Signal Html
 main = Signal.map (view actions.address) model
