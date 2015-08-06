@@ -331,7 +331,6 @@
       pc.setLocalDescription(
         new RTCSessionDescription(offer),
         function() { // send offer to server
-          setTimeout(function() {
             send({
               type: 'offerSDP',
               to: peerId,
@@ -340,7 +339,6 @@
                 mediaType: mediaType
               }
             });
-          }, 8000);
         }, onerror);
     }, onerror);
 
@@ -383,13 +381,11 @@
           pc.setLocalDescription(
             new RTCSessionDescription(answer),
             function() {
-              setTimeout(function() {
                 send({
                   type: 'answerSDP',
                   to: e.from,
                   data: answer
                 });
-              }, 8000);
             }, onerror);
         }, onerror);
 
