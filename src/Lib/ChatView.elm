@@ -1,4 +1,4 @@
-module Lib.ChatView (Model, init, Action(..), update, view, Error, afterUpdate) where
+module Lib.ChatView (Model, init, Action(..), update, updateMyName, view, Error) where
 
 import Task exposing (..)
 
@@ -30,8 +30,6 @@ type Action
   | UpdateField String
   | Send String
   | Message Name Image String Time
-  | MyName String
-  | ScrollDown
 
 type alias Model =
   { opened : Bool
@@ -52,34 +50,36 @@ init =
   , myName = ""
   }
 
-update : Action -> Model -> Model
-update action model = case log "ChatView.action" action of
-  Open -> { model |
-    opened <- True,
-    noReadCount <- 0
-  }
-  Close -> { model |
-    opened <- False
-  }
-  Message name image s time -> { model |
-    messages <- (name, image, s, Date.fromTime time) :: model.messages,
-    field <- if model.myName == name then "" else model.field,
-    noReadCount <- if model.opened then 0 else model.noReadCount + 1
-  }
-  UpdateField field -> { model |
-    field <- field
-  }
-  MyName myName -> { model |
+update : (String -> Task x ()) -> Action -> Model -> (Model, Maybe (Task Error ()))
+update send action model = case log "ChatView.action" action of
+  Open ->
+    (,) { model |
+      opened <- True,
+      noReadCount <- 0
+    } <| Just <| (focus "chat-input") `andThen` (\_ -> scrollDown "message-area") `onError` (\s -> fail <| Error s)
+  Close ->
+    (,) { model |
+      opened <- False
+    } Nothing
+  Message name image s time ->
+    (,) { model |
+      messages <- (name, image, s, Date.fromTime time) :: model.messages,
+      field <- if model.myName == name then "" else model.field,
+      noReadCount <- if model.opened then 0 else model.noReadCount + 1
+    } <| Just <| scrollDown "message-area" `onError` (\s -> fail <| Error s)
+  UpdateField field ->
+    (,) { model |
+      field <- field
+    } Nothing
+  Send x ->
+    (,) model <| Just <| send x `onError` (\s -> fail <| Error "")
+  _ -> (,) model Nothing
+
+updateMyName : String -> Model -> Model
+updateMyName myName model =
+  { model |
     myName <- myName
   }
-  _ -> model
-
-
-afterUpdate : Action -> Task Error ()
-afterUpdate action = case action of
-  Open -> (focus "chat-input") `onError` (\s -> fail <| Error s)
-  ScrollDown -> scrollDown "message-area" `onError` (\s -> fail <| Error s)
-  _ -> Task.succeed ()
 
 -----
 
