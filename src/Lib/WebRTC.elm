@@ -1,4 +1,4 @@
-module Lib.WebRTC (Model, init, Action(..), update, actions, doTask, decode, Error, logError) where
+module Lib.WebRTC (Model, init, Action(..), initialize, initRoom, update, actions, decode, Error, logError) where
 
 import Json.Decode as Json exposing ((:=))
 import Json.Encode
@@ -22,13 +22,12 @@ type alias Connection = (PeerId, MediaType, Upstream)
 type alias PeerId = String
 
 type Action
-  = Initialize PeerId (List Json.Encode.Value)
+  = NoOp
   | LocalVideoUrl (MediaType, Maybe String)
   | RemoteVideoUrl (Connection, Maybe String)
   | AddConnection Connection
   | RemoveConnection Connection
   | CloseWindow Connection
-  | InitRoom (List PeerId) (List (PeerId, User)) User
   | RemovePeer String
   | StartStreaming (String, List PeerId)
   | EndStreaming (String, List PeerId)
@@ -73,58 +72,79 @@ init =
     , volumes = []
     }
 
+initRoom : (List PeerId) -> (List (PeerId, User)) -> User -> Model -> Model
+initRoom peers users me model =
+  { model |
+    peers <- Set.fromList peers,
+    users <- Dict.fromList(users),
+    me <- me
+  }
 
-update : Action -> Model -> Model
-update action model = case action of
+initialize : PeerId -> (List Json.Encode.Value) -> Task Error ()
+initialize selfId iceServers =
+  initialize' selfId iceServers `onError` (\e -> fail <| Error e)
+
+update : ((String, String, Json.Encode.Value) -> Task () ()) -> Action -> Model -> (Model, Maybe (Task Error ()))
+update send action model = case action of
+  OfferSDP from data_ ->
+    (,) model <| Just <| answerSDP from data_ `onError` (\e -> fail <| Error e)
+  AnswerSDP from data_ ->
+    (,) model <| Just <| acceptAnswer from data_ `onError` (\e -> fail <| Error e)
+  OfferCandidate from data_ ->
+    (,) model <| Just <| addCandidate from data_ False `onError` (\e -> fail <| Error e)
+  AnswerCandidate from data_ ->
+    (,) model <| Just <| addCandidate from data_ True `onError` (\e -> fail <| Error e)
+  EndStream from data_ ->
+    (,) model <| Just <| closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
+  StartStreaming (mediaType, peers) ->
+    (,) model <| Just <| startStreaming mediaType peers `onError` (\e -> fail <| Error e)
+  EndStreaming (mediaType, peers) ->
+    (,) model <| Just <| endStreaming mediaType `onError` (\e -> fail <| Error e)
+  Request x ->
+    (,) model <| Just <| send x `onError` (\e -> fail <| Error "")
   CloseWindow target ->
-    { model |
+    (,) { model |
       connections <- Set.remove target model.connections
-    }
-  InitRoom peers users me ->
-    { model |
-      peers <- Set.fromList peers,
-      users <- Dict.fromList(users),
-      me <- me
-    }
+    } Nothing
   RemovePeer target ->
-    { model |
+    (,) { model |
       peers <- Set.remove target model.peers
-    }
+    } Nothing
   AddConnection conn ->
-    { model |
+    (,) { model |
       connections <- Set.insert conn model.connections
-    }
+    } Nothing
   RemoveConnection conn ->
-    { model |
+    (,) { model |
       connections <- Set.remove conn model.connections
-    }
+    } Nothing
   LocalVideoUrl (mediaType, maybeUrl) ->
-    { model |
+    (,) { model |
       localVideoUrls <- case maybeUrl of
         Just url -> Dict.insert mediaType url model.localVideoUrls
         Nothing -> Dict.remove mediaType model.localVideoUrls
-    }
+    } Nothing
   RemoteVideoUrl (conn, maybeUrl) ->
-    { model |
+    (,) { model |
       videoUrls <- case maybeUrl of
         Just url -> Dict.insert conn url model.videoUrls
         Nothing -> Dict.remove conn model.videoUrls
-    }
+    } Nothing
   Join peerId user ->
-    { model |
+    (,) { model |
       peers <- Set.insert peerId model.peers,
       users <- Dict.insert peerId user model.users
-    }
+    } <| Just <| beforeJoin peerId `onError` (\e -> fail <| Error e)
   Leave peerId ->
-    { model |
+    (,) { model |
       peers <- Set.remove peerId model.peers,
       users <- Dict.remove peerId model.users
-    }
+    } <| Just <| beforeLeave peerId `onError` (\e -> fail <| Error e)
   Volumes volumes ->
-    { model |
+    (,) { model |
       volumes <- volumes
-    }
-  _ -> model
+    } Nothing
+  _ -> (,) model Nothing
 
 logError : Error -> String
 logError e = case e of
@@ -224,8 +244,8 @@ onRemoveConnection = Native.WebRTC.onRemoveConnection
 
 --
 
-initialize : PeerId -> List Json.Encode.Value -> Task String ()
-initialize = Native.WebRTC.initialize
+initialize' : PeerId -> List Json.Encode.Value -> Task String ()
+initialize' = Native.WebRTC.initialize
 
 answerSDP : String -> Json.Encode.Value -> Task String ()
 answerSDP = Native.WebRTC.answerSDP
@@ -259,19 +279,3 @@ currentVolumes = Native.WebRTC.currentVolumes
 
 toVolumes : Signal x -> Signal (List (PeerId, Int))
 toVolumes signal = Signal.map currentVolumes signal
-
---
-
-doTask : Action -> Task Error ()
-doTask action = case {-log "WebRTC.doTask"-} action of
-  Initialize selfId iceServers -> initialize selfId iceServers `onError` (\e -> fail <| Error e)
-  OfferSDP from data_ -> answerSDP from data_ `onError` (\e -> fail <| Error e)
-  AnswerSDP from data_ -> acceptAnswer from data_ `onError` (\e -> fail <| Error e)
-  OfferCandidate from data_ -> addCandidate from data_ False `onError` (\e -> fail <| Error e)
-  AnswerCandidate from data_ -> addCandidate from data_ True `onError` (\e -> fail <| Error e)
-  EndStream from data_ -> closeRemoteStream from data_ `onError` (\e -> fail <| Error e)
-  StartStreaming (mediaType, peers) -> startStreaming mediaType peers `onError` (\e -> fail <| Error e)
-  EndStreaming (mediaType, peers) -> endStreaming mediaType `onError` (\e -> fail <| Error e)
-  Join peerId user -> beforeJoin peerId `onError` (\e -> fail <| Error e)
-  Leave peerId -> beforeLeave peerId `onError` (\e -> fail <| Error e)
-  _ -> Task.succeed ()

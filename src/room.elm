@@ -68,6 +68,7 @@ type Error
   | ChatViewError ChatView.Error
   | RTCError WebRTC.Error
   | VideoControlError
+  | OtherError
 
 fetchRoom : String -> Task Error API.InitialData
 fetchRoom roomId = (API.getInitialData roomId) `onError` (\err -> fail <| FetchError err)
@@ -77,8 +78,7 @@ connectWebSocket url = (WS.connect url) `onError` (\e -> fail <| WSError e)
 
 initializeRTC : PeerId -> API.InitialData -> Task Error ()
 initializeRTC selfPeerId initial =
-  WebRTC.doTask (WebRTC.Initialize selfPeerId initial.iceServers)
-  `onError` (\e -> fail <| RTCError e)
+  WebRTC.initialize selfPeerId initial.iceServers `onError` (\e -> fail <| RTCError e)
 
 initialize : String -> String -> String -> Task Error ()
 initialize selfPeerId roomName wsURL =
@@ -103,36 +103,14 @@ errorLog e = case e of
   VideoControlError -> "VideoControlError"
   ChatViewError e -> "ChatViewError"
 
-
 port runTasks : Signal (Task Error ())
 port runTasks =
   let f (time, action) model = case {-log "runTasks"-} action of
       InitRoom initial -> (WS.send <| joinToJson model.selfPeerId model.roomName) `onError` (\e -> fail <| WSError e)
-      WSAction event ->
-        case event of
-          WS.Message s ->
-            let
-              decodedMessage = decode s
-            in
-              case decodedMessage of
-                RTCMessage (WebRTC.Request x) ->
-                  (WS.send <| signalToJson model.selfPeerId model.roomName x) `onError` (\e -> fail <| WSError e)
-                RTCMessage x ->
-                  WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
-                ChatMessage _ _ _ ->
-                  ChatView.afterUpdate ChatView.ScrollDown `onError` (\e -> fail <| ChatViewError e)
-                UndefinedMessage ->
-                  Task.succeed ()
-          _ ->
-            Task.succeed ()
-      RTCAction (WebRTC.Request x) -> (WS.send <| signalToJson model.selfPeerId model.roomName x) `onError` (\e -> fail <| WSError e)
-      RTCAction x -> WebRTC.doTask x `onError` (\e -> fail <| RTCError e)
       ChatAction (ChatView.Send x) -> (WS.send <| messageToJson model.selfPeerId model.roomName x time) `onError` (\e -> fail <| WSError e)
       ChatAction (ChatView.Open) -> (ChatView.afterUpdate ChatView.ScrollDown) `onError` (\e -> fail <| ChatViewError e)
       ChatAction x -> ChatView.afterUpdate x `onError` (\e -> fail <| ChatViewError e)
       FullScreen x -> VideoControl.requestFullScreen x `onError` (\e -> fail VideoControlError)
-      StartStreaming x -> WebRTC.doTask (WebRTC.StartStreaming x) `onError` (\e -> fail <| RTCError e)
-      EndStreaming x -> WebRTC.doTask (WebRTC.EndStreaming x) `onError` (\e -> fail <| RTCError e)
       SubmitInvite -> API.postInvitation model.roomName (UserSearch.field model.userSearch)
         `onError` (\e -> fail <| FetchError e)
         `andThen` (\_ -> Signal.send actions.address EndInvitation)
@@ -198,17 +176,17 @@ context : Signal Model
 context = Signal.map fst state
 
 
-state : Signal (Model, Maybe (Task () Action))
+state : Signal (Model, Maybe (Task Error ()))
 state =
   Signal.foldp
     (\action (model, _) -> update action model)
     (initialContext, Nothing) actionSignal
 
 
-port runState : Signal (Task () ())
+port runState : Signal (Task Error ())
 port runState =
   Signal.map (\(_, maybeTask) -> case maybeTask of
-      Just task -> task `andThen` (\action -> Signal.send actions.address action)
+      Just task -> task
       Nothing -> Task.succeed ()
       ) state
 
@@ -262,14 +240,18 @@ actionSignal = Signal.mergeMany
 
 -- Update --
 
-update : Action -> Model -> (Model, Maybe (Task () Action))
+update : Action -> Model -> (Model, Maybe (Task Error ()))
 update action model =
+  let
+    send x = (WS.send <| signalToJson model.selfPeerId model.roomName x) `onError` (\e -> Task.succeed ())
+  in
     case {-log "action"-} action of
       WSAction event ->
-        let newContext =
-          { model |
-            ws <- WS.update event model.ws
-          }
+        let
+          newContext =
+            { model |
+              ws <- WS.update event model.ws
+            }
         in
           case event of
             WS.Message s ->
@@ -278,20 +260,28 @@ update action model =
               in
                 case decodedMessage of
                   RTCMessage rtcMes ->
-                    (,) { newContext |
-                      rtc <- WebRTC.update rtcMes newContext.rtc
-                    } Nothing
+                    let
+                      (newRTC, maybeTask) = WebRTC.update send rtcMes newContext.rtc
+                    in
+                      (,) { newContext |
+                        rtc <- newRTC
+                      } (Maybe.map (\task -> task `onError` (\e -> fail <| RTCError e)) maybeTask)
                   ChatMessage peerId s time ->
                     (,) { newContext |
                       chat <- ChatView.update
                                 (ChatView.Message (userOf newContext peerId).displayName (userOf newContext peerId).image s time)
                                 newContext.chat
-                    } Nothing
+                    } <| Just <| ChatView.afterUpdate ChatView.ScrollDown `onError` (\e -> fail <| ChatViewError e)
+                  UndefinedMessage ->
+                    (,) newContext Nothing
             _ -> (,) newContext Nothing
-      RTCAction event ->
-        (,) { model |
-          rtc <- WebRTC.update event model.rtc
-        } Nothing
+      RTCAction action ->
+        let
+          (newRTC, maybeTask) = WebRTC.update send action model.rtc
+        in
+          (,) { model |
+            rtc <- newRTC
+          } (Maybe.map (\task -> task `onError` (\e -> fail <| RTCError e)) maybeTask)
       Init selfPeerId roomName ->
         (,) { model |
           selfPeerId <- selfPeerId,
@@ -300,17 +290,23 @@ update action model =
       InitRoom initial ->
         (,) { model |
           me <- initial.user,
-          rtc <- WebRTC.update (WebRTC.InitRoom initial.room.peers initial.room.users initial.user) model.rtc,
+          rtc <- WebRTC.initRoom initial.room.peers initial.room.users initial.user model.rtc,
           chat <- ChatView.update (ChatView.MyName initial.user.displayName) model.chat
         } Nothing
       StartStreaming a ->
-        (,) { model |
-          rtc <- WebRTC.update (WebRTC.StartStreaming a) model.rtc
-        } Nothing
+        let
+          (newRTC, maybeTask) = WebRTC.update send (WebRTC.StartStreaming a) model.rtc
+        in
+          (,) { model |
+            rtc <- newRTC
+          } (Maybe.map (\task -> task `onError` (\e -> fail <| RTCError e)) maybeTask)
       EndStreaming a ->
-        (,) { model |
-          rtc <- WebRTC.update (WebRTC.EndStreaming a) model.rtc
-        } Nothing
+        let
+          (newRTC, maybeTask) = WebRTC.update send (WebRTC.EndStreaming a) model.rtc
+        in
+          (,) { model |
+            rtc <- newRTC
+          } (Maybe.map (\task -> task `onError` (\e -> fail <| RTCError e)) maybeTask)
       ChatAction action ->
         (,) { model |
           chat <- ChatView.update action model.chat
@@ -322,11 +318,11 @@ update action model =
       UserSearchAction action ->
         let
           (newModel, maybeTask) = UserSearch.update action model.userSearch
-          task = Maybe.map (Task.map UserSearchAction) maybeTask
+          maybeTask' = Maybe.map (\task -> task `andThen` (\a -> Signal.send actions.address <| UserSearchAction a) `onError` (\e -> fail OtherError)) maybeTask
         in
           (,) { model |
             userSearch <- newModel
-          } task
+          } maybeTask'
       EndInvitation ->
         (,) { model |
           modal <- Modal.init,
