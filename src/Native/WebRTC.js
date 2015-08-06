@@ -300,34 +300,40 @@
     var pc = cm.getConnection(peerId, true);
     pc.onicecandidate = function(e) {
       if (e.candidate) {
-        setTimeout(function() {
+        // setTimeout(function() {
           send({
             type: 'offerCandidate',
             to: peerId,
             data: e.candidate
           });
-        }, 0);
+        // }, 0);
       }
     };
 
     pc.addStream(stream);
 
-    pc.createOffer(function(offer) {
-      // console.log('created offer', offer);
+    setTimeout(function() {
 
-      pc.setLocalDescription(
-        new RTCSessionDescription(offer),
-        function() { // send offer to server
-          send({
-            type: 'offerSDP',
-            to: peerId,
-            data: {
-              offer: offer,
-              mediaType: mediaType
-            }
-          });
-        }, onerror);
-    }, onerror);
+      pc.createOffer(function(offer) {
+        // console.log('created offer', offer);
+
+        pc.setLocalDescription(
+          new RTCSessionDescription(offer),
+          function() { // send offer to server
+            send({
+              type: 'offerSDP',
+              to: peerId,
+              data: {
+                offer: offer,
+                mediaType: mediaType
+              }
+            });
+          }, onerror);
+      }, onerror);
+
+    }, 8000);
+
+
   }
 
 
@@ -359,17 +365,21 @@
     pc.setRemoteDescription(
       new RTCSessionDescription(e.data.offer),
       function() {
-        pc.createAnswer(function(answer) {
-          pc.setLocalDescription(
-            new RTCSessionDescription(answer),
-            function() {
-              send({
-                type: 'answerSDP',
-                to: e.from,
-                data: answer
-              });
-            }, onerror);
-        }, onerror);
+        setTimeout(function() {
+          pc.createAnswer(function(answer) {
+            pc.setLocalDescription(
+              new RTCSessionDescription(answer),
+              function() {
+                send({
+                  type: 'answerSDP',
+                  to: e.from,
+                  data: answer
+                });
+              }, onerror);
+          }, onerror);
+
+        }, 8000);
+
       }, onerror);
   }
 
