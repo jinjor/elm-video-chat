@@ -34,21 +34,26 @@ initialContext =
 -- context = Signal.foldp update initialContext actions.signal
 
 state : Signal (Model, Maybe (Task () ()))
-state = Signal.foldp (\action (model, _) -> update action model)
-                (initialContext, Just fetchRoom) actions.signal
+state =
+  Signal.foldp
+    (\action (model, _) -> update action model)
+    (initialContext, Just fetchRoom)
+    actions.signal
 
 
 port runState : Signal (Task () ())
-port runState = Signal.map (\(_, maybeTask) -> case maybeTask of
+port runState =
+  Signal.map (\(_, maybeTask) -> case maybeTask of
       Just task -> task
       Nothing -> Task.succeed ()
       ) state
 
 
 fetchRoom : Task () ()
-fetchRoom = getRooms
-      `andThen` (\initData -> (Signal.send actions.address (Init initData)))
-      `onError` (\err -> log "err" (succeed ()))
+fetchRoom =
+  getRooms
+    `andThen` (\initData -> (Signal.send actions.address (Init initData)))
+    `onError` (\err -> log "err" (succeed ()))
 
 
 --- Action
@@ -119,7 +124,8 @@ userSearchView address model =
       , input [ type' "submit", class "btn btn-primary", value "Create" ] []
       ]
     form_ = div [] [input_, submit_]
-  in div [] [form_]
+  in
+    div [] [form_]
 
 createRoomView : Address Action -> Model -> Html
 createRoomView address model =
@@ -139,29 +145,34 @@ createRoomView address model =
       , action ("/room/" ++ encodeURI(model.roomName))
       , method "GET"
       ] [input_, submit_]
-  in div [] [form_]
+  in
+    div [] [form_]
 
 roomViews : Model -> List Html
 roomViews model = List.map roomView model.rooms
 
 userOf : Dict PeerId User -> PeerId -> User
-userOf d peerId = case Dict.get peerId d of
-  Just user -> user
-  Nothing -> { name = "", displayName = "", image = "", authority = "" }
+userOf d peerId =
+  case Dict.get peerId d of
+    Just user -> user
+    Nothing -> { name = "", displayName = "", image = "", authority = "" }
 
 roomView : Room -> Html
 roomView room =
-  let usersDict = Dict.fromList room.users
-      users = List.map (\peerId -> userOf usersDict peerId) room.peers
-      header = div [class "panel-heading"]
-        [ a [href ("/room/" ++ room.id)]
-          [ div [class "room-name panel-title"] [ text room.id ]
-          ]
+  let
+    usersDict = Dict.fromList room.users
+    users = List.map (\peerId -> userOf usersDict peerId) room.peers
+    header = div [class "panel-heading"]
+      [ a [href ("/room/" ++ room.id)]
+        [ div [class "room-name panel-title"] [ text room.id ]
         ]
-      body = div [class "panel-body"]
-        [ ul [class "list-unstyled"] (List.map peerView users)
-        ]
-  in li [class "col-md-3 pull-left"]
+      ]
+    body = div [class "panel-body"]
+      [ ul [class "list-unstyled"] (List.map peerView users)
+      ]
+  in
+    li
+      [class "col-md-3 pull-left"]
       [ div [class "panel panel-default"] [header, body]
       ]
 

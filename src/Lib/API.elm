@@ -41,7 +41,8 @@ nocacheGet decoder url =
       , url = url
       , body = Http.empty
       }
-  in Http.fromJson decoder (Http.send Http.defaultSettings request)
+  in
+    Http.fromJson decoder (Http.send Http.defaultSettings request)
 
 postJson : Json.Decoder value -> String -> String -> Task Http.Error value
 postJson decoder url body =
@@ -56,7 +57,8 @@ postJson decoder url body =
       , url = url
       , body = Http.string body
       }
-  in Http.fromJson decoder (Http.send Http.defaultSettings request)
+  in
+    Http.fromJson decoder (Http.send Http.defaultSettings request)
 
 getInitialData : String -> Task Http.Error InitialData
 getInitialData roomId = nocacheGet initialDataDecoder (log "url" ("/api/room/" ++ roomId))
@@ -88,10 +90,12 @@ initialDataDecoder =
 
 initialRoomsDataDecoder : Json.Decoder InitialRoomsData
 initialRoomsDataDecoder =
-  let rooms = Json.list roomDecoder
-  in Json.object2 (\user rooms -> { user=user, rooms=rooms })
-    ("user" := userDecoder)
-    ("rooms" := rooms)
+  let
+    rooms = Json.list roomDecoder
+  in
+    Json.object2 (\user rooms -> { user=user, rooms=rooms })
+      ("user" := userDecoder)
+      ("rooms" := rooms)
 
 
 userDecoder : Json.Decoder User

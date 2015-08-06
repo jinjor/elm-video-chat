@@ -14,7 +14,7 @@ type alias Model = { error : Maybe String }
 
 --- Model
 init : Model
-init = { error= Nothing }
+init = { error = Nothing }
 
 model : Signal Model
 model = Signal.foldp update init actions.signal
@@ -25,8 +25,8 @@ type Action
 
 update : Action -> Model -> Model
 update action model =
-    case action of
-      _ -> model
+  case action of
+    _ -> model
 
 
 actions : Signal.Mailbox Action

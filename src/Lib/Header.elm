@@ -42,8 +42,12 @@ header c =
         ]
       ]
 
-welcomeView = div [class "navbar-text navbar-right"]
-  [ logoutButton
-  ]
+welcomeView : Html
+welcomeView =
+  div
+    [class "navbar-text navbar-right"]
+    [ logoutButton
+    ]
 
+logoutButton : Html
 logoutButton = a [class "navbar-link", href "/logout"] [text "Logout"]

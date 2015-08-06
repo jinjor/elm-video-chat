@@ -33,10 +33,11 @@ connect : String -> Task Error ()
 connect url = (connect_ url) `onError` (\s -> fail <| ConnectionError s)
 
 actions : Signal Action
-actions = Signal.mergeMany
-  [ Opened <~ opened
-  , Message <~ message
-  ]
+actions =
+  Signal.mergeMany
+    [ Opened <~ opened
+    , Message <~ message
+    ]
 
 message : Signal String
 message = Native.WebSocket.message
@@ -51,8 +52,9 @@ send : String -> Task Error ()
 send mes = send_ mes `onError` (\s -> fail <| SendError s)
 
 logError : Error -> String
-logError e = case e of
-  ConnectionError mes -> mes
-  SendError mes -> mes
+logError e =
+  case e of
+    ConnectionError mes -> mes
+    SendError mes -> mes
 
 type Error = ConnectionError String | SendError String

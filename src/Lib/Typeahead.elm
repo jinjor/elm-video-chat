@@ -78,19 +78,22 @@ update action model =
       UpdateField field -> if field == "" then Nothing else Just <| Task.map Data (model.fetch field)
       Blur -> Just <| Task.sleep 400 `andThen` (\_ -> Task.succeed Blur2) -- TODO a race condition
       _ -> Nothing
-  in (newModel, task)
+  in
+    (newModel, task)
 
 selectOption : Model a -> Int -> Model a
 selectOption model index =
   { model |
     selected <- -1
   , optionVisible <- False
-  , options <- case nth index model.options of
-    Just obj -> [obj]
-    Nothing -> []
-  , field <- case nth index model.options of
-    Just obj -> model.toField obj
-    Nothing -> ""
+  , options <-
+    case nth index model.options of
+      Just obj -> [obj]
+      Nothing -> []
+  , field <-
+    case nth index model.options of
+      Just obj -> model.toField obj
+      Nothing -> ""
   }
 
 updateSelected : Int -> Int -> Int -> Int
@@ -98,7 +101,8 @@ updateSelected key length selected =
   let
     next = if key == 38 then selected - 1 else (if key == 40 then selected + 1 else selected)
     next' = if next <= -2 then length - 1 else (if next >= length then -1 else next)
-  in next'
+  in
+    next'
 
 nth : Int -> List a -> Maybe a
 nth index list = List.head (List.drop index list)
@@ -112,13 +116,13 @@ view address model =
   in
     div [class "typeahead dropdown"]
       [ input
-        [ class "form-control"
-        , onKeyDown address KeyDown
-        , onFocus address Focus
-        , onBlur address Blur
-        , on "input" targetValue (Signal.message address << UpdateField)
-        , value <| displayField model
-        ] []
+          [ class "form-control"
+          , onKeyDown address KeyDown
+          , onFocus address Focus
+          , onBlur address Blur
+          , on "input" targetValue (Signal.message address << UpdateField)
+          , value <| displayField model
+          ] []
       , ul
           [ class "dropdown-menu"
           , style [("display", if visible then "block" else "none"), ("width", "100%")]

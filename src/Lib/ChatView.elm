@@ -51,29 +51,30 @@ init =
   }
 
 update : (String -> Task x ()) -> Action -> Model -> (Model, Maybe (Task Error ()))
-update send action model = case log "ChatView.action" action of
-  Open ->
-    (,) { model |
-      opened <- True,
-      noReadCount <- 0
-    } <| Just <| (focus "chat-input") `andThen` (\_ -> scrollDown "message-area") `onError` (\s -> fail <| Error s)
-  Close ->
-    (,) { model |
-      opened <- False
-    } Nothing
-  Message name image s time ->
-    (,) { model |
-      messages <- (name, image, s, Date.fromTime time) :: model.messages,
-      field <- if model.myName == name then "" else model.field,
-      noReadCount <- if model.opened then 0 else model.noReadCount + 1
-    } <| Just <| scrollDown "message-area" `onError` (\s -> fail <| Error s)
-  UpdateField field ->
-    (,) { model |
-      field <- field
-    } Nothing
-  Send x ->
-    (,) model <| Just <| send x `onError` (\s -> fail <| Error "")
-  _ -> (,) model Nothing
+update send action model =
+  case log "ChatView.action" action of
+    Open ->
+      (,) { model |
+        opened <- True,
+        noReadCount <- 0
+      } <| Just <| (focus "chat-input") `andThen` (\_ -> scrollDown "message-area") `onError` (\s -> fail <| Error s)
+    Close ->
+      (,) { model |
+        opened <- False
+      } Nothing
+    Message name image s time ->
+      (,) { model |
+        messages <- (name, image, s, Date.fromTime time) :: model.messages,
+        field <- if model.myName == name then "" else model.field,
+        noReadCount <- if model.opened then 0 else model.noReadCount + 1
+      } <| Just <| scrollDown "message-area" `onError` (\s -> fail <| Error s)
+    UpdateField field ->
+      (,) { model |
+        field <- field
+      } Nothing
+    Send x ->
+      (,) model <| Just <| send x `onError` (\s -> fail <| Error "")
+    _ -> (,) model Nothing
 
 updateMyName : String -> Model -> Model
 updateMyName myName model =
@@ -92,9 +93,9 @@ scrollDown = Native.ChatView.scrollDown
 
 onEnter : Address () -> Attribute
 onEnter address =
-    on "keydown"
-      (Json.customDecoder keyCode is13)
-      (\_ -> Signal.message address ())
+  on "keydown"
+    (Json.customDecoder keyCode is13)
+    (\_ -> Signal.message address ())
 
 is13 : Int -> Result String ()
 is13 code =
@@ -104,13 +105,15 @@ is13 code =
 -- Views
 messageView : Name -> IncomingChatMessage -> Html
 messageView myName (name, image, message, time) =
-  let self = myName == name
-      avator = img [src image, class "chat-avator"] []
-      name_ = div [class "chat-name"] [text name]
-      message_ = div [class "chat-message"] [ div [] [text message], time_]
-      time_ = div [class "chat-time"] [text <| dateToString time]
-      clazz = if self then "chat chat-self" else "chat"
-  in li [class clazz] (if self then [message_] else [avator, name_, message_])
+  let
+    self = myName == name
+    avator = img [src image, class "chat-avator"] []
+    name_ = div [class "chat-name"] [text name]
+    message_ = div [class "chat-message"] [ div [] [text message], time_]
+    time_ = div [class "chat-time"] [text <| dateToString time]
+    clazz = if self then "chat chat-self" else "chat"
+  in
+    li [class clazz] (if self then [message_] else [avator, name_, message_])
 
 chatTimeline : Model -> Html
 chatTimeline model =
@@ -144,27 +147,30 @@ openedView address model =
 
 closedView : Address Action -> Int -> List Html
 closedView address noReadCount =
-  let noreadClass = if noReadCount > 0 then " noread" else ""
+  let
+    noreadClass = if noReadCount > 0 then " noread" else ""
   in
-  [ div
-      [ class <| "panel-heading row" ++ noreadClass
-      , onClick address Open
-      ]
-      [ span [class "fa fa-comments"] []
-      , text <| "Chat(" ++ (toString noReadCount) ++ ")"
-      ]
-  ]
+    [ div
+        [ class <| "panel-heading row" ++ noreadClass
+        , onClick address Open
+        ]
+        [ span [class "fa fa-comments"] []
+        , text <| "Chat(" ++ (toString noReadCount) ++ ")"
+        ]
+    ]
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  let inner = if | model.opened -> openedView address model
-                 | otherwise -> closedView address model.noReadCount
-      openedClass = if model.opened then " opened" else ""
-  in div [class "chat-view-container container"]
-    [ div
-      [ class <| "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6" ++ openedClass
-      ] inner
-    ]
+  let
+    inner = if | model.opened -> openedView address model
+               | otherwise -> closedView address model.noReadCount
+    openedClass = if model.opened then " opened" else ""
+  in
+    div [class "chat-view-container container"]
+      [ div
+        [ class <| "chat-view panel panel-default col-xs-12 col-sm-8 col-md-6" ++ openedClass
+        ] inner
+      ]
 
 
 ---

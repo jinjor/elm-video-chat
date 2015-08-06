@@ -403,27 +403,32 @@ madiaIcon mediaType =
 
 madiaButton : Address Action -> Model -> String -> Html
 madiaButton address model mediaType =
-  let classes = case mediaType of
+  let
+    classes =
+      case mediaType of
         "video" -> "fa fa-video-camera"
         "mic" -> "fa fa-microphone"
         "screen" -> "fa fa-desktop"
-      streaming = case Dict.get mediaType model.rtc.localVideoUrls of
+    streaming =
+      case Dict.get mediaType model.rtc.localVideoUrls of
         Just _ -> True
         Nothing -> False
-      face = if streaming then "btn-primary" else "btn-default"
-      action = if streaming then EndStreaming (mediaType, peers) else StartStreaming (mediaType, peers)
-      peers = Set.toList model.rtc.peers
-  in button
-    [ Html.Attributes.type' "button"
-    , class ("btn " ++ face)
-    , onClick address action
-    ] [madiaIcon mediaType]
+    face = if streaming then "btn-primary" else "btn-default"
+    action = if streaming then EndStreaming (mediaType, peers) else StartStreaming (mediaType, peers)
+    peers = Set.toList model.rtc.peers
+  in
+    button
+      [ Html.Attributes.type' "button"
+      , class ("btn " ++ face)
+      , onClick address action
+      ] [madiaIcon mediaType]
 
 mediaButtons : Address Action -> Model -> Html
-mediaButtons address model = div
-  [ Html.Attributes.attribute "role" "group"
-  , class "btn-group"
-  ] (List.map (madiaButton address model) mediaTypes)
+mediaButtons address model =
+  div
+    [ Html.Attributes.attribute "role" "group"
+    , class "btn-group"
+    ] (List.map (madiaButton address model) mediaTypes)
 
 peerView : Address Action -> Model -> PeerId -> Html
 peerView address model peer =
@@ -437,9 +442,10 @@ peerView address model peer =
     ]
 
 peerViews : Address Action -> Model -> List PeerId -> Html
-peerViews address model peers = ul
-  [ class "user-list list-unstyled hidden-xs"
-  ] (List.map (\peer -> peerView address model peer) peers)
+peerViews address model peers =
+  ul
+    [ class "user-list list-unstyled hidden-xs"
+    ] (List.map (\peer -> peerView address model peer) peers)
 
 statusView : Address Action -> Model -> Html
 statusView address model =
