@@ -35,7 +35,7 @@
       clientId = _clientId;
       cm = createConnectionManager({
         iceServers: iceServers
-      });
+      }, send);
       return Task.asyncFunction(function(callback) {
         callback(Task.succeed(Utils.Tuple0));
       });
@@ -166,7 +166,7 @@
     return roomId;
   }
 
-  function createConnectionManager(connectionOption) {
+  function createConnectionManager(connectionOption, send) {
     var connections = {};
     var getConnection = function(id, upstream) {
       if(!id) {
@@ -177,6 +177,17 @@
         console.log('not exists: ' + key);
         var pc = new RTCPeerConnection(connectionOption);
         connections[key] = pc;
+        pc.onicecandidate = function(e) {
+          if (e.candidate) {
+            // setTimeout(function() {
+              send({
+                type: upstream ? 'offerCandidate' : 'answerCandidate',
+                to: id,
+                data: e.candidate
+              });
+            // }, 0);
+          }
+        };
       }
       return connections[key];
     };
@@ -298,17 +309,17 @@
       return;
     }
     var pc = cm.getConnection(peerId, true);
-    pc.onicecandidate = function(e) {
-      if (e.candidate) {
-        // setTimeout(function() {
-          send({
-            type: 'offerCandidate',
-            to: peerId,
-            data: e.candidate
-          });
-        // }, 0);
-      }
-    };
+    // pc.onicecandidate = function(e) {
+    //   if (e.candidate) {
+    //     // setTimeout(function() {
+    //       send({
+    //         type: 'offerCandidate',
+    //         to: peerId,
+    //         data: e.candidate
+    //       });
+    //     // }, 0);
+    //   }
+    // };
 
     pc.addStream(stream);
 
@@ -341,15 +352,15 @@
     var _from = e.from;
     var pc = cm.getConnection(_from, false);
     var mediaType = e.data.mediaType;
-    pc.onicecandidate = function(e) {
-      if (e.candidate) {
-        send({
-          type: 'answerCandidate',
-          to: _from,
-          data: e.candidate
-        });
-      }
-    };
+    // pc.onicecandidate = function(e) {
+    //   if (e.candidate) {
+    //     send({
+    //       type: 'answerCandidate',
+    //       to: _from,
+    //       data: e.candidate
+    //     });
+    //   }
+    // };
     pc.onaddstream = function(e) {
       // var mediaType = e.stream.getAudioTracks()[0] ? 'mic' : 'video';//TODO
       cm.addStream(_from, mediaType, e.stream);
