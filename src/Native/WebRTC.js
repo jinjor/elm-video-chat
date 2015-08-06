@@ -323,14 +323,15 @@
 
     pc.addStream(stream);
 
-    setTimeout(function() {
 
-      pc.createOffer(function(offer) {
-        // console.log('created offer', offer);
 
-        pc.setLocalDescription(
-          new RTCSessionDescription(offer),
-          function() { // send offer to server
+    pc.createOffer(function(offer) {
+      // console.log('created offer', offer);
+
+      pc.setLocalDescription(
+        new RTCSessionDescription(offer),
+        function() { // send offer to server
+          setTimeout(function() {
             send({
               type: 'offerSDP',
               to: peerId,
@@ -339,10 +340,11 @@
                 mediaType: mediaType
               }
             });
-          }, onerror);
-      }, onerror);
+          }, 8000);
+        }, onerror);
+    }, onerror);
 
-    }, 8000);
+
 
 
   }
@@ -376,20 +378,20 @@
     pc.setRemoteDescription(
       new RTCSessionDescription(e.data.offer),
       function() {
-        setTimeout(function() {
-          pc.createAnswer(function(answer) {
-            pc.setLocalDescription(
-              new RTCSessionDescription(answer),
-              function() {
+
+        pc.createAnswer(function(answer) {
+          pc.setLocalDescription(
+            new RTCSessionDescription(answer),
+            function() {
+              setTimeout(function() {
                 send({
                   type: 'answerSDP',
                   to: e.from,
                   data: answer
                 });
-              }, onerror);
-          }, onerror);
-
-        }, 8000);
+              }, 8000);
+            }, onerror);
+        }, onerror);
 
       }, onerror);
   }
